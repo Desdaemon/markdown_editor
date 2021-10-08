@@ -119,7 +119,7 @@ worker.onmessage = ({ data }) => {
   if (data) {
     diff(parseTemplate(data), preview);
   } else {
-    // preview.innerHTML = "";
+    preview.innerHTML = "";
   }
   renderMathInElement(preview, katexOptions);
 };
@@ -144,11 +144,14 @@ const app = {
   },
   onInput(event) {
     if (!done) return;
+    clearTimeout(handle);
     done = false;
-    this.source = event.target.value;
-    this.updatePreview();
-    localStorage.setItem("source", this.source);
-    done = true;
+    handle = setTimeout(() => {
+      this.source = event.target.value;
+      this.updatePreview();
+      localStorage.setItem("source", this.source);
+      done = true;
+    }, 100);
   },
   onKey(event) {
     console.log(event);
