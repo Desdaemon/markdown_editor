@@ -83,21 +83,14 @@ function diff(template, elem) {
       const domNode = domNodes[index];
       // replace text content
       const content = nodeContent(node);
-      if (
-        content &&
-        content !== nodeContent(domNode) &&
-        !katexHashMatches(content, domNode)
-      ) {
+      const katexChanged = !katexHashMatches(content, domNode);
+      if (content && katexChanged && content !== nodeContent(domNode)) {
         domNodes[index].textContent = content;
       }
 
       const domNodeHasChild = domNode.hasChildNodes();
       const nodeHasChild = node.hasChildNodes();
-      if (
-        domNodeHasChild &&
-        !nodeHasChild &&
-        !katexHashMatches(content, domNode)
-      ) {
+      if (domNodeHasChild && !nodeHasChild && katexChanged) {
         // wipe
         // domNodes[index].innerHTML = "";
         domNode.textContent = node.textContent;
@@ -114,18 +107,6 @@ function diff(template, elem) {
   });
 }
 
-const worker = new Worker("./worker.js");
-worker.onmessage = ({ data }) => {
-  if (data) {
-    diff(parseTemplate(data), preview);
-  } else {
-    preview.innerHTML = "";
-  }
-  renderMathInElement(preview, katexOptions);
-};
-
-let done = true;
-
 const app = {
   indentCount: 0,
   source: localStorage.getItem("source"),
@@ -140,17 +121,21 @@ const app = {
     });
   },
   updatePreview(source = this.source) {
-    worker.postMessage(source);
+    if (source) {
+      const template = marked.parse(source);
+      const elm = parseTemplate(template);
+      diff(elm, preview);
+      renderMathInElement(preview, katexOptions);
+    } else {
+      preview.innerHTML = "";
+    }
   },
   onInput(event) {
-    if (!done) return;
     clearTimeout(handle);
-    done = false;
     handle = setTimeout(() => {
       this.source = event.target.value;
       this.updatePreview();
       localStorage.setItem("source", this.source);
-      done = true;
     }, 100);
   },
   onKey(event) {
