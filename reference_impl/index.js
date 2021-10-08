@@ -7,7 +7,7 @@ const katexOptions = {
     { left: "$$", right: "$$", display: true },
     { left: "$", right: "$", display: false },
   ],
-  throwOnError: false,
+  // throwOnError: false
 };
 
 function parseTemplate(htmlString) {
@@ -47,13 +47,13 @@ function hashCode(str) {
 }
 
 function katexHashMatches(textContent, dom) {
-  if (!(textContent && textContent.startsWith("$"))) return false;
-  const attr = dom.getAttribute(KATEX_ATTR);
+  if (!(dom && textContent && textContent.startsWith("$"))) return false;
+  const attr = dom.getAttribute?.(KATEX_ATTR);
   const N = textContent.length;
   const ret =
     attr == hashCode(textContent.substring(1, N - 1)) ||
     attr == hashCode(textContent.substring(2, N - 2));
-  if (!ret) dom.removeAttribute(KATEX_ATTR);
+  if (!ret) dom.removeAttribute?.(KATEX_ATTR);
   return ret;
 }
 
@@ -92,7 +92,6 @@ function diff(template, elem) {
       const nodeHasChild = node.hasChildNodes();
       if (domNodeHasChild && !nodeHasChild && katexChanged) {
         // wipe
-        // domNodes[index].innerHTML = "";
         domNode.textContent = node.textContent;
       } else if (!domNodeHasChild && nodeHasChild) {
         // new children
@@ -124,8 +123,12 @@ const app = {
     if (source) {
       const template = marked.parse(source);
       const elm = parseTemplate(template);
-      diff(elm, preview);
-      renderMathInElement(preview, katexOptions);
+      try {
+        diff(elm, preview);
+        renderMathInElement(preview, katexOptions);
+      } catch (e) {
+        alert(e.message);
+      }
     } else {
       preview.innerHTML = "";
     }
