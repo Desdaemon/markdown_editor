@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Markdown Editor</title>
+    <link
+      href="https://fonts.googleapis.com/icon?family=Material+Icons"
+      rel="stylesheet"
+    />
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.2/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+      integrity="sha384-uWxY/CJNBR+1zjPWmfnSnVxwRheevXITnMqoEIeG1LJrdI0GlVs/9cVSyPYXdcSF"
+      crossorigin="anonymous"
+    />
+    <script
+      src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.2/dist/js/bootstrap.bundle.min.js"
+      integrity="sha384-kQtW33rZJAHjgefvhyyzcGF3C5TFyBQBA13V1RKPf4uH+bwyzQxZ6CmMZHmNBEfJ"
+      crossorigin="anonymous"
+    ></script>
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/katex@0.13.18/dist/katex.min.css"
+      integrity="sha384-zTROYFVGOfTw7JV7KUu8udsvW2fx4lWOsCEDqhBreBwlHI4ioVRtmIvEThzJHGET"
+      crossorigin="anonymous"
+    />
+    <link rel="stylesheet" href="markdown.css" />
+    <style>
+      :root {
+        --bottom-bar-height: 35px;
+        --row-height: calc(100vh - var(--bottom-bar-height));
+      }
+      body {
+        display: grid;
+      }
+      #toolbar {
+        overflow: auto;
+        white-space: nowrap;
+        user-select: none;
+        height: var(--bottom-bar-height);
+      }
+      #editor {
+        outline: none;
+        resize: none;
+        border: none;
+        height: var(--row-height);
+        font-family: "JetBrainsMono Nerd Font", "Courier New", Courier,
+          monospace;
+      }
+      #preview {
+        height: var(--row-height);
+        overflow: scroll;
+      }
+    </style>
+    <link rel="manifest" href="manifest.json" />
+  </head>
+  <body v-scope class="container-fluid" @mounted="mounted">
+    <div class="row">
+      <textarea
+        name="editor"
+        id="editor"
+        class="col"
+        :value="source"
+        @input="onInput"
+        @scroll="onScroll"
+      ></textarea>
+      <div id="preview" class="col markdown-body">
+        <div class="d-flex justify-content-center">
+          <div class="spinner-border" role="status">
+            <span class="visually-hidden">Loading...</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="row row-cols-auto justify-content-between">
+      <div id="toolbar" class="col">
+        <span class="material-icons">call_end</span>
+        <span class="material-icons">format_bold</span>
+        <span class="material-icons">format_italic</span>
+        <span class="material-icons">format_strikethrough</span>
+        <span class="material-icons">functions</span>
+        <span class="material-icons">format_indent_increase</span>
+        <span class="material-icons">format_indent_decrease</span>
+        <span>Spaces: {{ indentCount }}</span>
+      </div>
+      <span class="material-icons col">menu</span>
+    </div>
+    <script type="module" src="index.ts"></script>
+  </body>
+</html>

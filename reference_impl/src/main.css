@@ -1,0 +1,24 @@
+:root {
+  --bottom-bar-height: 35px;
+  --row-height: calc(100vh - var(--bottom-bar-height));
+}
+body {
+  display: grid;
+}
+#toolbar {
+  overflow: auto;
+  white-space: nowrap;
+  user-select: none;
+  height: var(--bottom-bar-height);
+}
+#editor {
+  outline: none;
+  resize: none;
+  border: none;
+  height: var(--row-height);
+  font-family: "JetBrainsMono Nerd Font", "Courier New", Courier, monospace;
+}
+#preview {
+  height: var(--row-height);
+  overflow: scroll;
+}
