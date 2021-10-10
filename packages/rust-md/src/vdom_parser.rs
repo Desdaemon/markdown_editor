@@ -3,21 +3,21 @@ use std::collections::HashMap;
 
 use crate::vnode::*;
 use pulldown_cmark::{Options, Parser, Tag};
-use quick_xml::events::attributes::Attributes;
-use quick_xml::events::Event;
-use quick_xml::Reader;
+// use quick_xml::events::attributes::Attributes;
+// use quick_xml::events::Event;
+// use quick_xml::Reader;
 
-fn parse_attributes(attrs: Attributes) -> HashMap<String, String> {
-    attrs
-        .filter_map(Result::ok)
-        .map(|a| {
-            (
-                String::from_utf8_lossy(a.key).to_string(),
-                String::from_utf8_lossy(&a.value).to_string(),
-            )
-        })
-        .collect()
-}
+// fn parse_attributes(attrs: Attributes) -> HashMap<String, String> {
+// attrs
+// .filter_map(Result::ok)
+// .map(|a| {
+// (
+// String::from_utf8_lossy(a.key).to_string(),
+// String::from_utf8_lossy(&a.value).to_string(),
+// )
+// })
+// .collect()
+// }
 
 #[inline]
 fn borrow_children(node: &mut Option<VNode>) -> Option<&mut Vec<VNode>> {
@@ -27,77 +27,77 @@ fn borrow_children(node: &mut Option<VNode>) -> Option<&mut Vec<VNode>> {
     }
 }
 
-pub fn parse_xml_to_vdom(xml: &str) -> Option<VNode> {
-    let mut reader = Reader::from_str(xml);
-    let mut buf = Vec::new();
-    let mut node_stack: Vec<VNode> = Vec::new();
-    let mut current_node: Option<VNode> = None;
-    loop {
-        match &reader.read_event(&mut buf) {
-            Ok(Event::Eof) => break,
-            Ok(Event::Start(start)) => {
-                if let Some(cur) = current_node.take() {
-                    node_stack.push(cur);
-                }
-                let tag = String::from_utf8_lossy(start.name());
-                let attrs = parse_attributes(start.attributes());
-                let id = attrs
-                    .get("id")
-                    .map(|e| format!("#{}", e))
-                    .unwrap_or_else(String::new);
-                let classes = attrs
-                    .get("class")
-                    .map(|e| format!(".{}", e.split(' ').collect::<Box<_>>().join(".")))
-                    .unwrap_or_else(String::new);
-                current_node = Some(VNode {
-                    sel: Some([tag.to_string(), id, classes].join("")),
-                    data: Some(VNodeData {
-                        attrs: Some(serde_json::to_value(attrs).unwrap()),
-                        ..Default::default()
-                    }),
-                    children: Some(vec![]),
-                    ..Default::default()
-                });
-            }
-            Ok(Event::End(_)) => {
-                if !node_stack.is_empty() {
-                    let done = current_node.take().unwrap();
-                    current_node = node_stack.pop();
-                    borrow_children(&mut current_node).map(|e| e.push(done));
-                }
-            }
-            Ok(Event::Text(text)) => {
-                borrow_children(&mut current_node).map(|e| {
-                    e.push(VNode::text_node(
-                        String::from_utf8_lossy(text.escaped()).to_string(),
-                    ));
-                });
-            }
-            Ok(Event::Empty(elm)) => {
-                borrow_children(&mut current_node).map(|e| {
-                    let tag = String::from_utf8_lossy(elm.name());
-                    let attrs = parse_attributes(elm.attributes());
-                    let node = VNode {
-                        sel: Some(tag.to_string()),
-                        data: Some(VNodeData {
-                            attrs: Some(serde_json::to_value(attrs).unwrap()),
-                            ..Default::default()
-                        }),
-                        ..Default::default()
-                    };
-                    e.push(node);
-                });
-            }
-            // Err(e) => return Err(JsValue::from_str(&format!("{}", e))),
-            Err(_) => return None,
-            _ => {}
-        }
-        buf.clear();
-    }
+// pub fn parse_xml_to_vdom(xml: &str) -> Option<VNode> {
+// let mut reader = Reader::from_str(xml);
+// let mut buf = Vec::new();
+// let mut node_stack: Vec<VNode> = Vec::new();
+// let mut current_node: Option<VNode> = None;
+// loop {
+// match &reader.read_event(&mut buf) {
+// Ok(Event::Eof) => break,
+// Ok(Event::Start(start)) => {
+// if let Some(cur) = current_node.take() {
+// node_stack.push(cur);
+// }
+// let tag = String::from_utf8_lossy(start.name());
+// let attrs = parse_attributes(start.attributes());
+// let id = attrs
+// .get("id")
+// .map(|e| format!("#{}", e))
+// .unwrap_or_else(String::new);
+// let classes = attrs
+// .get("class")
+// .map(|e| format!(".{}", e.split(' ').collect::<Box<_>>().join(".")))
+// .unwrap_or_else(String::new);
+// current_node = Some(VNode {
+// sel: Some([tag.to_string(), id, classes].join("")),
+// data: Some(VNodeData {
+// attrs: Some(serde_json::to_value(attrs).unwrap()),
+// ..Default::default()
+// }),
+// children: Some(vec![]),
+// ..Default::default()
+// });
+// }
+// Ok(Event::End(_)) => {
+// if !node_stack.is_empty() {
+// let done = current_node.take().unwrap();
+// current_node = node_stack.pop();
+// borrow_children(&mut current_node).map(|e| e.push(done));
+// }
+// }
+// Ok(Event::Text(text)) => {
+// borrow_children(&mut current_node).map(|e| {
+// e.push(VNode::text_node(
+// String::from_utf8_lossy(text.escaped()).to_string(),
+// ));
+// });
+// }
+// Ok(Event::Empty(elm)) => {
+// borrow_children(&mut current_node).map(|e| {
+// let tag = String::from_utf8_lossy(elm.name());
+// let attrs = parse_attributes(elm.attributes());
+// let node = VNode {
+// sel: Some(tag.to_string()),
+// data: Some(VNodeData {
+// attrs: Some(serde_json::to_value(attrs).unwrap()),
+// ..Default::default()
+// }),
+// ..Default::default()
+// };
+// e.push(node);
+// });
+// }
+// // Err(e) => return Err(JsValue::from_str(&format!("{}", e))),
+// Err(_) => return None,
+// _ => {}
+// }
+// buf.clear();
+// }
 
-    // Ok(JsValue::from_serde(&current_node.take()).unwrap())
-    current_node.take()
-}
+// // Ok(JsValue::from_serde(&current_node.take()).unwrap())
+// current_node.take()
+// }
 
 fn tag_to_display(tag: &Tag) -> &'static str {
     match tag {
@@ -186,11 +186,11 @@ pub fn parse_markdown_to_vdom(markdown: &str, options: Options) -> Option<VNode>
                     e.push(pre_node);
                 });
             }
-            pulldown_cmark::Event::Html(xml) => {
-                if let Some(vnode) = parse_xml_to_vdom(&xml) {
-                    borrow_children(&mut current_node).map(|e| e.push(vnode));
-                }
-            }
+            // pulldown_cmark::Event::Html(xml) => {
+            // if let Some(vnode) = parse_xml_to_vdom(&xml) {
+            // borrow_children(&mut current_node).map(|e| e.push(vnode));
+            // }
+            // }
             // pulldown_cmark::Event::FootnoteReference(_) => todo!(),
             pulldown_cmark::Event::SoftBreak | pulldown_cmark::Event::HardBreak => {
                 borrow_children(&mut current_node)
@@ -233,8 +233,8 @@ pub fn parse_markdown_to_vdom(markdown: &str, options: Options) -> Option<VNode>
 
 #[cfg(test)]
 mod tests {
-    use crate::parse;
-    use crate::vdom_parser::parse_xml_to_vdom;
+    // use crate::parse;
+    // use crate::vdom_parser::parse_xml_to_vdom;
     use pulldown_cmark::{Options, Parser};
 
     use super::parse_markdown_to_vdom;
@@ -247,12 +247,12 @@ mod tests {
         println!("{:?}", node);
     }
 
-    #[test]
-    fn markdown_to_xml_to_vdom() {
-        let xml = parse(SOURCE, None);
-        let vdom = parse_xml_to_vdom(&xml);
-        println!("{:?}", vdom);
-    }
+    // #[test]
+    // fn markdown_to_xml_to_vdom() {
+    // let xml = parse(SOURCE, None);
+    // let vdom = parse_xml_to_vdom(&xml);
+    // println!("{:?}", vdom);
+    // }
 
     #[test]
     fn basic() {

@@ -1,15 +1,8 @@
 import { createApp } from "petite-vue";
-import {
-  attributesModule,
-  init,
-  propsModule,
-  styleModule,
-  datasetModule,
-  VNode,
-  h,
-} from "snabbdom";
+import { VNode, h } from "snabbdom";
 import initWasm, { parse_vdom } from "rust-md";
-import katex from "katex";
+import { createVirtualRoot } from "./utils";
+// import katex from "katex";
 
 let initDone = false;
 let prom = initWasm().then(() => (initDone = true));
@@ -19,20 +12,15 @@ function parseTemplate(template: string) {
 }
 parseTemplate.parser = new DOMParser();
 
-const transformKatex = (template: string) =>
-  template.replace(transformKatex.pattern, transformKatex.replace);
-transformKatex.pattern = /(\${1,2})([^ ].*?[^ ])\1/g;
-transformKatex.replace = (_: any, delimiter: string, tex: string) => {
-  const displayMode = delimiter.length == 2;
-  return katex.renderToString(tex, { displayMode, throwOnError: false });
-};
+// const transformKatex = (template: string) =>
+// template.replace(transformKatex.pattern, transformKatex.replace);
+// transformKatex.pattern = /(\${1,2})([^ ].*?[^ ])\1/g;
+// transformKatex.replace = (_: any, delimiter: string, tex: string) => {
+// const displayMode = delimiter.length == 2;
+// return katex.renderToString(tex, { displayMode, throwOnError: false });
+// };
 
-const patch = init([propsModule, attributesModule, styleModule, datasetModule]);
-
-let preview: VNode;
-const updatePreview = (node: VNode) =>
-  (preview = patch(preview ?? document.getElementById("preview"), node));
-
+let [preview, updatePreview] = createVirtualRoot("preview");
 const editor = document.getElementById("editor")!;
 
 declare global {
@@ -60,10 +48,10 @@ class App {
   source = localStorage.getItem("source") || "";
   mounted() {
     document.addEventListener("DOMContentLoaded", () => {
-      this.updatePreview();
+      this.renderPreview();
     });
   }
-  async updatePreview(source = this.source) {
+  async renderPreview(source = this.source) {
     if (source) {
       let template: VNode;
       if (initDone) {
@@ -82,7 +70,7 @@ class App {
     this.source = event.target.value;
     localStorage.setItem("source", this.source);
     clearTimeout(handle);
-    handle = setTimeout(this.updatePreview.bind(this), 100);
+    handle = setTimeout(this.renderPreview.bind(this), 100);
   }
   onKey(event: any) {
     console.log(event);
