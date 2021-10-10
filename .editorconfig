@@ -1,2 +1,5 @@
-[*.{dart,js}]
+[*.{dart,js,ts}]
 indent_size = 2
+
+[*.{html,rs}]
+indent_size = 4
