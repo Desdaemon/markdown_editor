@@ -1,17 +1,6 @@
-use crate::vnode::*;
+use crate::{vnode::*, xml::xml_to_vdom};
 use pulldown_cmark::{Options, Parser, Tag};
 use serde_json::json;
-// use quick_xml::events::attributes::Attributes;
-// use quick_xml::events::Event;
-// use quick_xml::Reader;
-
-#[inline]
-fn borrow_children(opt: &mut Option<VNode>) -> Option<&mut Vec<VNode>> {
-    match opt {
-        Some(VNode { children, .. }) => children.as_mut(),
-        _ => None,
-    }
-}
 
 fn borrow_last_text(opt: &mut Option<VNode>) -> Option<&mut String> {
     match opt {
@@ -82,8 +71,12 @@ fn tag_to_display(tag: &Tag, in_header: &mut bool) -> &'static str {
     }
 }
 
-pub fn parse_markdown_to_vdom(markdown: &str, options: Options) -> Option<VNode> {
+pub fn markdown_to_vdom(markdown: &str, options: Options) -> Option<VNode> {
     let parser = Parser::new_ext(markdown, options);
+    markdown_to_vdom_with(parser)
+}
+
+pub fn markdown_to_vdom_with(parser: Parser) -> Option<VNode> {
     let mut node_stack: Vec<VNode> = vec![];
     let mut current_node: Option<VNode> = Some(VNode {
         sel: Some("div".to_owned()),
@@ -155,6 +148,7 @@ pub fn parse_markdown_to_vdom(markdown: &str, options: Options) -> Option<VNode>
                 hoist_last_text(&mut current_node);
             }
             pulldown_cmark::Event::Text(text) => {
+                let text = text.escape_debug().to_string();
                 if let Some(e) = borrow_last_text(&mut current_node) {
                     e.push_str(&text)
                 } else if let Some(e) = borrow_children(&mut current_node) {
@@ -174,11 +168,13 @@ pub fn parse_markdown_to_vdom(markdown: &str, options: Options) -> Option<VNode>
                     e.push(code_node);
                 }
             }
-            // pulldown_cmark::Event::Html(xml) => {
-            // if let Some(vnode) = parse_xml_to_vdom(&xml) {
-            // borrow_children(&mut current_node).map(|e| e.push(vnode));
-            // }
-            // }
+            pulldown_cmark::Event::Html(xml) => {
+                if let Some(e) = borrow_children(&mut current_node) {
+                    if let Some(vnode) = xml_to_vdom(&xml) {
+                        e.push(vnode);
+                    }
+                }
+            }
             // pulldown_cmark::Event::FootnoteReference(_) => todo!(),
             pulldown_cmark::Event::SoftBreak => {
                 if let Some(e) = borrow_last_text(&mut current_node) {
@@ -233,109 +229,18 @@ pub fn parse_markdown_to_vdom(markdown: &str, options: Options) -> Option<VNode>
 
 #[cfg(test)]
 mod tests {
-    // use crate::parse;
-    // use crate::vdom_parser::parse_xml_to_vdom;
-    use pulldown_cmark::{Options, Parser};
+    use pulldown_cmark::Options;
 
-    use super::parse_markdown_to_vdom;
-
-    // const SOURCE: &'static str = include_str!("markdown_reference.md");
-    const SOURCE: &'static str = "
-$$
-asd \\
-sdf
-$$";
+    use super::markdown_to_vdom;
 
     #[test]
-    fn sanity_check() {
-        let node = parse_markdown_to_vdom(SOURCE, Options::all());
+    fn test_mixed_xml() {
+        let source = "
+$$
+one two \\\\
+three
+$$";
+        let node = markdown_to_vdom(source, Options::all());
         dbg!(node);
     }
-
-    // #[test]
-    // fn markdown_to_xml_to_vdom() {
-    // let xml = parse(SOURCE, None);
-    // let vdom = parse_xml_to_vdom(&xml);
-    // println!("{:?}", vdom);
-    // }
-
-    #[test]
-    fn basic() {
-        let parser = Parser::new_ext(SOURCE, Options::all());
-        for event in parser {
-            dbg!(event);
-        }
-    }
 }
-
-// pub fn parse_xml_to_vdom(xml: &str) -> Option<VNode> {
-// let mut reader = Reader::from_str(xml);
-// let mut buf = Vec::new();
-// let mut node_stack: Vec<VNode> = Vec::new();
-// let mut current_node: Option<VNode> = None;
-// loop {
-// match &reader.read_event(&mut buf) {
-// Ok(Event::Eof) => break,
-// Ok(Event::Start(start)) => {
-// if let Some(cur) = current_node.take() {
-// node_stack.push(cur);
-// }
-// let tag = String::from_utf8_lossy(start.name());
-// let attrs = parse_attributes(start.attributes());
-// let id = attrs
-// .get("id")
-// .map(|e| format!("#{}", e))
-// .unwrap_or_else(String::new);
-// let classes = attrs
-// .get("class")
-// .map(|e| format!(".{}", e.split(' ').collect::<Box<_>>().join(".")))
-// .unwrap_or_else(String::new);
-// current_node = Some(VNode {
-// sel: Some([tag.to_string(), id, classes].join("")),
-// data: Some(VNodeData {
-// attrs: Some(serde_json::to_value(attrs).unwrap()),
-// ..Default::default()
-// }),
-// children: Some(vec![]),
-// ..Default::default()
-// });
-// }
-// Ok(Event::End(_)) => {
-// if !node_stack.is_empty() {
-// let done = current_node.take().unwrap();
-// current_node = node_stack.pop();
-// borrow_children(&mut current_node).map(|e| e.push(done));
-// }
-// }
-// Ok(Event::Text(text)) => {
-// borrow_children(&mut current_node).map(|e| {
-// e.push(VNode::text_node(
-// String::from_utf8_lossy(text.escaped()).to_string(),
-// ));
-// });
-// }
-// Ok(Event::Empty(elm)) => {
-// borrow_children(&mut current_node).map(|e| {
-// let tag = String::from_utf8_lossy(elm.name());
-// let attrs = parse_attributes(elm.attributes());
-// let node = VNode {
-// sel: Some(tag.to_string()),
-// data: Some(VNodeData {
-// attrs: Some(serde_json::to_value(attrs).unwrap()),
-// ..Default::default()
-// }),
-// ..Default::default()
-// };
-// e.push(node);
-// });
-// }
-// // Err(e) => return Err(JsValue::from_str(&format!("{}", e))),
-// Err(_) => return None,
-// _ => {}
-// }
-// buf.clear();
-// }
-
-// // Ok(JsValue::from_serde(&current_node.take()).unwrap())
-// current_node.take()
-// }

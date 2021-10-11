@@ -43,3 +43,11 @@ pub struct VNodeData {
     // #[serde(skip_serializing_if = "Option::is_none")]
     // pub key: Option<serde_json::Value>,
 }
+
+#[inline]
+pub fn borrow_children(opt: &mut Option<VNode>) -> Option<&mut Vec<VNode>> {
+    match opt {
+        Some(VNode { children, .. }) => children.as_mut(),
+        _ => None,
+    }
+}

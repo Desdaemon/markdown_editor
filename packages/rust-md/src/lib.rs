@@ -1,9 +1,11 @@
-pub mod log;
+mod events;
+mod log;
+mod markdown;
 mod utils;
-pub mod vdom_parser;
-pub mod vnode;
+mod vnode;
+mod xml;
 
-use vdom_parser::parse_markdown_to_vdom;
+use markdown::markdown_to_vdom;
 use wasm_bindgen::prelude::*;
 
 // When the `wee_alloc` feature is enabled, use `wee_alloc` as the global
@@ -123,7 +125,7 @@ pub fn parse_vdom(markdown: &str, options: Option<IMarkdownOptions>) -> JsValue 
     });
 
     let opts = resolve_options(opts);
-    let vnode = parse_markdown_to_vdom(markdown, opts);
+    let vnode = markdown_to_vdom(markdown, opts);
 
     #[cfg(not(feature = "serde-wasm-bindgen"))]
     return JsValue::from_serde(&vnode).unwrap();
