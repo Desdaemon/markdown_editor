@@ -4,13 +4,15 @@ import {
   classModule,
   attributesModule,
   styleModule,
+  toVNode,
 } from "snabbdom";
 
 export const patch = init([classModule, attributesModule, styleModule]);
 
-export function createVirtualRoot(id: string): [VNode, (node: VNode) => void] {
-  let root: any;
-  const updateRoot = (node: VNode) =>
-    (root = patch(root ?? document.getElementById(id), node));
+export function createVirtualRoot(
+  id: string
+): [root: VNode, update: (node: VNode) => VNode] {
+  let root = toVNode(document.getElementById(id)!);
+  const updateRoot = (node: VNode) => (root = patch(root, node));
   return [root, updateRoot];
 }

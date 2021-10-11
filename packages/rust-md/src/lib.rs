@@ -97,7 +97,14 @@ fn resolve_options(opts: Option<MarkdownOptions>) -> Options {
 
 #[wasm_bindgen]
 pub fn parse(markdown: &str, options: Option<IMarkdownOptions>) -> String {
-    let opts = options.map(|e| JsValue::into_serde::<MarkdownOptions>(&e).unwrap());
+    let opts = options.map(|e| {
+        #[cfg(not(feature = "serde-wasm-bindgen"))]
+        return JsValue::into_serde::<MarkdownOptions>(&e).unwrap();
+
+        #[cfg(feature = "serde-wasm-bindgen")]
+        return serde_wasm_bindgen::from_value::<MarkdownOptions>(e.into()).unwrap();
+    });
+
     let opts = resolve_options(opts);
     let parser = Parser::new_ext(markdown, opts);
     let mut buf = String::with_capacity(markdown.len());
@@ -107,8 +114,38 @@ pub fn parse(markdown: &str, options: Option<IMarkdownOptions>) -> String {
 
 #[wasm_bindgen]
 pub fn parse_vdom(markdown: &str, options: Option<IMarkdownOptions>) -> JsValue {
-    let opts = options.map(|e| JsValue::into_serde::<MarkdownOptions>(&e).unwrap());
+    let opts = options.map(|e| {
+        #[cfg(not(feature = "serde-wasm-bindgen"))]
+        return JsValue::into_serde::<MarkdownOptions>(&e).unwrap();
+
+        #[cfg(feature = "serde-wasm-bindgen")]
+        return serde_wasm_bindgen::from_value::<MarkdownOptions>(e.into()).unwrap();
+    });
+
     let opts = resolve_options(opts);
     let vnode = parse_markdown_to_vdom(markdown, opts);
-    JsValue::from_serde(&vnode).unwrap()
+
+    #[cfg(not(feature = "serde-wasm-bindgen"))]
+    return JsValue::from_serde(&vnode).unwrap();
+
+    #[cfg(feature = "serde-wasm-bindgen")]
+    return serde_wasm_bindgen::to_value(&vnode).unwrap();
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::parse;
+
+    const SOURCE: &'static str = "
+one
+two \\
+three
+
+three";
+
+    #[test]
+    fn test_parse_vdom() {
+        let xml = parse(SOURCE, None);
+        dbg!(xml);
+    }
 }

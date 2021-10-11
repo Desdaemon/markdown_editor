@@ -24,22 +24,22 @@ impl VNode {
 
 #[derive(Serialize, Default, Debug)]
 pub struct VNodeData {
-    /// str -> str
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub props: Option<serde_json::Value>,
+    // /// str -> str
+    // #[serde(skip_serializing_if = "Option::is_none")]
+    // pub props: Option<serde_json::Value>,
     /// str -> str
     #[serde(skip_serializing_if = "Option::is_none")]
     pub attrs: Option<serde_json::Value>,
-    /// str -> bool
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub class: Option<serde_json::Value>,
-    /// str -> str
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub style: Option<serde_json::Value>,
-    /// str -> str
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub dataset: Option<serde_json::Value>,
-    /// string | number | symbol
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub key: Option<serde_json::Value>,
+    // /// str -> bool
+    // #[serde(skip_serializing_if = "Option::is_none")]
+    // pub class: Option<serde_json::Value>,
+    // /// str -> str
+    // #[serde(skip_serializing_if = "Option::is_none")]
+    // pub style: Option<serde_json::Value>,
+    // /// str -> str
+    // #[serde(skip_serializing_if = "Option::is_none")]
+    // pub dataset: Option<serde_json::Value>,
+    // /// string | number | symbol
+    // #[serde(skip_serializing_if = "Option::is_none")]
+    // pub key: Option<serde_json::Value>,
 }

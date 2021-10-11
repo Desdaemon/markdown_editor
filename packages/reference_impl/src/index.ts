@@ -1,27 +1,92 @@
 import { createApp } from "petite-vue";
-import { VNode, h } from "snabbdom";
+import { VNode, h, thunk, toVNode } from "snabbdom";
 import initWasm, { parse_vdom } from "rust-md";
 import { createVirtualRoot } from "./utils";
-// import katex from "katex";
+import katex from "katex";
 
 let initDone = false;
 let prom = initWasm().then(() => (initDone = true));
+
+const PREVIEW_SEL = "div#preview.col.markdown-body";
+const KATEX_RE = /(\${1,2})([^\0]+?)\1/g;
+const KATEX_IGNORE = [
+  "script",
+  "noscript",
+  "style",
+  "textarea",
+  "pre",
+  "code",
+  "option",
+];
 
 function parseTemplate(template: string) {
   return parseTemplate.parser.parseFromString(template, "text/html").body;
 }
 parseTemplate.parser = new DOMParser();
 
-// const transformKatex = (template: string) =>
-// template.replace(transformKatex.pattern, transformKatex.replace);
-// transformKatex.pattern = /(\${1,2})([^ ].*?[^ ])\1/g;
-// transformKatex.replace = (_: any, delimiter: string, tex: string) => {
-// const displayMode = delimiter.length == 2;
-// return katex.renderToString(tex, { displayMode, throwOnError: false });
-// };
-
 let [preview, updatePreview] = createVirtualRoot("preview");
 const editor = document.getElementById("editor")!;
+
+function Katex(source: string, displayMode = false) {
+  const span = document.createElement("span");
+  katex.render(source, span, {
+    displayMode,
+    throwOnError: false,
+  });
+  return toVNode(span);
+}
+
+function visitChildren(
+  children: (string | VNode)[],
+  parseKatex = true
+): (string | VNode)[] {
+  const ret: (string | VNode)[] = [];
+  for (const child of children) {
+    const isString = typeof child === "string";
+    const text = isString ? child : child.text;
+    if (text) {
+      let display: boolean | undefined;
+      if (parseKatex) {
+        for (const section of text.split(KATEX_RE)) {
+          if (display !== undefined) {
+            ret.push(thunk("span", Katex, [section, display]));
+            display = undefined;
+          } else if (section === "$$") {
+            display = true;
+          } else if (section === "$") {
+            display = false;
+          } else {
+            ret.push({ text: section } as any);
+          }
+        }
+      } else {
+        ret.push({ text } as any);
+      }
+    } else {
+      if (isString) continue;
+      const _parseKatex =
+        parseKatex &&
+        (!child.sel || !KATEX_IGNORE.some((e) => child.sel!.startsWith(e)));
+      if (child.children?.length) {
+        const children = visitChildren(child.children, _parseKatex);
+        ret.push({ ...child, children });
+      } else if (child.text?.length) {
+        const children = visitChildren([child.text], _parseKatex);
+        ret.push({ ...child, children });
+      } else {
+        ret.push(child);
+      }
+    }
+  }
+  return ret;
+}
+
+function renderKatex(template: VNode) {
+  if (template.children) {
+    const children = visitChildren(template.children);
+    updatePreview({ ...template, children });
+  }
+}
 
 declare global {
   interface String {
@@ -45,6 +110,7 @@ let handle: any;
 
 class App {
   indentCount = 0;
+  responseTime = 0;
   source = localStorage.getItem("source") || "";
   mounted() {
     document.addEventListener("DOMContentLoaded", () => {
@@ -52,6 +118,7 @@ class App {
     });
   }
   async renderPreview(source = this.source) {
+    const t0 = performance.now();
     if (source) {
       let template: VNode;
       if (initDone) {
@@ -60,11 +127,13 @@ class App {
         await prom;
         template = parse_vdom(source);
       }
-      template.sel = "div#preview.col.markdown-body";
-      updatePreview(template);
+      console.log(template);
+      template.sel = PREVIEW_SEL;
+      renderKatex(template);
     } else {
-      updatePreview(h("div#preview.col.markdown-body", null, []));
+      updatePreview(h(PREVIEW_SEL, null, []));
     }
+    this.responseTime = performance.now() - t0;
   }
   onInput(event: any) {
     this.source = event.target.value;
