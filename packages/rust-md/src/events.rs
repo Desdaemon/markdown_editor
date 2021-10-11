@@ -13,6 +13,15 @@ pub fn process_katex<'a>(
     })
 }
 
-fn is_in_katex(input: &str, initial: bool) -> nom::IResult<&str, bool> {
-    Ok((input, initial))
+fn is_in_katex(input: &str) -> nom::IResult<&str, bool> {
+    let mut display: Option<bool> = None;
+    let mut input = input;
+    loop {
+        if let Some(display) = &display {
+
+        } else if let Ok((new_input, opener)) = take_till(alt((tag("$"), tag("$$")))) {
+            input = new_input;
+        }
+    }
+    Ok((input, display))
 }

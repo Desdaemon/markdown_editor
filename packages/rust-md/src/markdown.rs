@@ -104,7 +104,7 @@ pub fn markdown_to_vdom_with(parser: Parser) -> Option<VNode> {
                             pulldown_cmark::LinkType::Email => format!("mailto:{}", &dest),
                             _ => dest.to_string(),
                         };
-                        Some(json! {{ "href": href }})
+                        Some(json!{{ "href": href }})
                     }
                     _ => None,
                 };
