@@ -51,7 +51,6 @@ pub fn xml_to_vdom(xml: &str) -> Option<VNode> {
                     sel: Some([tag.to_string(), id, classes].join("")),
                     data: Some(VNodeData {
                         attrs: Some(serde_json::to_value(attrs).unwrap()),
-                        ..Default::default()
                     }),
                     children: Some(vec![]),
                     ..Default::default()
@@ -81,7 +80,6 @@ pub fn xml_to_vdom(xml: &str) -> Option<VNode> {
                         sel: Some(tag.to_string()),
                         data: Some(VNodeData {
                             attrs: Some(serde_json::to_value(attrs).unwrap()),
-                            ..Default::default()
                         }),
                         ..Default::default()
                     };

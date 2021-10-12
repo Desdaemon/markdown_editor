@@ -107,7 +107,7 @@ fn resolve_options(opts: Option<IMarkdownOptions>) -> Options {
 
 #[wasm_bindgen]
 pub fn parse(markdown: &str, options: Option<IMarkdownOptions>) -> String {
-    let opts = resolve_options(opts);
+    let opts = resolve_options(options);
     let parser = Parser::new_ext(markdown, opts);
     let mut buf = String::with_capacity(markdown.len());
     push_html(&mut buf, parser);
@@ -116,7 +116,7 @@ pub fn parse(markdown: &str, options: Option<IMarkdownOptions>) -> String {
 
 #[wasm_bindgen]
 pub fn parse_vdom(markdown: &str, options: Option<IMarkdownOptions>) -> JsValue {
-    let opts = resolve_options(opts);
+    let opts = resolve_options(options);
     let vnode = markdown_to_vdom(markdown, opts);
 
     #[cfg(not(feature = "serde-wasm-bindgen"))]

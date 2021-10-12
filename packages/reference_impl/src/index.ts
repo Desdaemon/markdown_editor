@@ -127,11 +127,11 @@ class App {
         await prom;
         template = parse_vdom(source);
       }
-      console.log(template);
       template.sel = PREVIEW_SEL;
+      template.data ??= {};
       renderKatex(template);
     } else {
-      updatePreview(h(PREVIEW_SEL, null, []));
+      updatePreview(h(PREVIEW_SEL, {}, []));
     }
     this.responseTime = performance.now() - t0;
   }

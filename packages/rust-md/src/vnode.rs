@@ -1,6 +1,6 @@
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Default, Debug)]
+#[derive(PartialEq, Eq, Deserialize, Serialize, Default, Debug)]
 pub struct VNode {
     /// selector, e.g. div#unique-id.some.class
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -22,13 +22,12 @@ impl VNode {
     }
 }
 
-#[derive(Serialize, Default, Debug)]
+#[derive(PartialEq, Eq, Deserialize, Serialize, Default, Debug)]
 pub struct VNodeData {
     // /// str -> str
     // #[serde(skip_serializing_if = "Option::is_none")]
     // pub props: Option<serde_json::Value>,
     /// str -> str
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub attrs: Option<serde_json::Value>,
     // /// str -> bool
     // #[serde(skip_serializing_if = "Option::is_none")]

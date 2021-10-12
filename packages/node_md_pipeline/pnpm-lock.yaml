@@ -4,12 +4,14 @@ specifiers:
   jsdom: ^18.0.0
   katex: ^0.13.18
   marked: ^3.0.7
+  rust-md: file:../rust-md/pkg
   snabbdom: ^3.1.0
 
 dependencies:
   jsdom: 18.0.0
   katex: 0.13.18
   marked: 3.0.7
+  rust-md: link:../rust-md/pkg
   snabbdom: 3.1.0
 
 packages:

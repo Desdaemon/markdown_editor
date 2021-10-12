@@ -47,3 +47,4 @@ app.*.map.json
 
 node_modules
 .parcel-cache
+markdown_reference.*

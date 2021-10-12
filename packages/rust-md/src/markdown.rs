@@ -1,5 +1,9 @@
-use crate::{vnode::*, xml::xml_to_vdom};
-use pulldown_cmark::{Options, Parser, Tag};
+use crate::{
+    events::{remap_table_headers, wrap_code_block},
+    vnode::*,
+    xml::xml_to_vdom,
+};
+use pulldown_cmark::{Alignment, Options, Parser, Tag};
 use serde_json::json;
 
 fn borrow_last_text(opt: &mut Option<VNode>) -> Option<&mut String> {
@@ -15,23 +19,23 @@ fn borrow_last_text(opt: &mut Option<VNode>) -> Option<&mut String> {
     }
 }
 
-fn hoist_last_text(opt: &mut Option<VNode>) {
-    match opt {
-        Some(node) => match &node.children {
-            Some(vec) if vec.len() == 1 => match vec.last() {
-                Some(VNode { text, .. }) if text.is_some() => {
-                    let text = node.children.take().unwrap().pop().unwrap().text;
-                    node.text = text;
-                }
-                _ => {}
-            },
-            _ => {}
-        },
-        _ => {}
-    }
-}
+// fn hoist_last_text(opt: &mut Option<VNode>) {
+// match opt {
+// Some(node) => match &node.children {
+// Some(vec) if vec.len() == 1 => match vec.last() {
+// Some(VNode { text, .. }) if text.is_some() => {
+// let text = node.children.take().unwrap().pop().unwrap().text;
+// node.text = text;
+// }
+// _ => {}
+// },
+// _ => {}
+// },
+// _ => {}
+// }
+// }
 
-fn tag_to_display(tag: &Tag, in_header: &mut bool) -> &'static str {
+fn tag_to_display(tag: &Tag) -> &'static str {
     match tag {
         pulldown_cmark::Tag::Paragraph => "p",
         pulldown_cmark::Tag::Heading(lvl) => match lvl {
@@ -50,18 +54,9 @@ fn tag_to_display(tag: &Tag, in_header: &mut bool) -> &'static str {
         pulldown_cmark::Tag::Item => "li",
         // pulldown_cmark::Tag::FootnoteDefinition(_) => todo!(),
         pulldown_cmark::Tag::Table(_) => "table",
-        pulldown_cmark::Tag::TableHead => {
-            *in_header = true;
-            "tr"
-        }
+        pulldown_cmark::Tag::TableHead => "th",
         pulldown_cmark::Tag::TableRow => "tr",
-        pulldown_cmark::Tag::TableCell => {
-            if *in_header {
-                "th"
-            } else {
-                "td"
-            }
-        }
+        pulldown_cmark::Tag::TableCell => "td",
         pulldown_cmark::Tag::Emphasis => "em",
         pulldown_cmark::Tag::Strong => "strong",
         pulldown_cmark::Tag::Strikethrough => "s",
@@ -71,30 +66,44 @@ fn tag_to_display(tag: &Tag, in_header: &mut bool) -> &'static str {
     }
 }
 
-pub fn markdown_to_vdom(markdown: &str, options: Options) -> Option<VNode> {
-    let parser = Parser::new_ext(markdown, options);
-    markdown_to_vdom_with(parser)
+fn alignment_to_display(alignment: &Alignment) -> Option<&'static str> {
+    match alignment {
+        Alignment::None => None,
+        Alignment::Left => Some("left"),
+        Alignment::Right => Some("right"),
+        Alignment::Center => Some("center"),
+    }
 }
 
-pub fn markdown_to_vdom_with(parser: Parser) -> Option<VNode> {
+pub fn markdown_to_vdom(markdown: &str, options: Options) -> Option<VNode> {
+    let parser = Parser::new_ext(markdown, options);
+    let events = wrap_code_block(parser);
+    let events = remap_table_headers(events);
+    markdown_to_vdom_with(events)
+}
+
+pub fn markdown_to_vdom_with<'a>(
+    events: impl Iterator<Item = pulldown_cmark::Event<'a>>,
+) -> Option<VNode> {
     let mut node_stack: Vec<VNode> = vec![];
     let mut current_node: Option<VNode> = Some(VNode {
         sel: Some("div".to_owned()),
         children: Some(vec![]),
         ..Default::default()
     });
-    let mut in_header = false;
+    let mut alignments: Vec<Alignment> = vec![];
+    let mut align_index = 0;
 
-    for event in parser {
+    for event in events {
         match event {
             pulldown_cmark::Event::Start(tag) => {
                 if let Some(cur) = current_node.take() {
                     node_stack.push(cur);
                 }
-                let name = tag_to_display(&tag, &mut in_header);
+                let name = tag_to_display(&tag);
                 let class = match &tag {
                     pulldown_cmark::Tag::CodeBlock(pulldown_cmark::CodeBlockKind::Fenced(lang)) => {
-                        Some(lang)
+                        Some(lang.to_string())
                     }
                     _ => None,
                 };
@@ -104,28 +113,34 @@ pub fn markdown_to_vdom_with(parser: Parser) -> Option<VNode> {
                             pulldown_cmark::LinkType::Email => format!("mailto:{}", &dest),
                             _ => dest.to_string(),
                         };
-                        Some(json!{{ "href": href }})
+                        Some(json! {{ "href": href }})
+                    }
+                    pulldown_cmark::Tag::TableCell | pulldown_cmark::Tag::TableHead => {
+                        let align = alignments[align_index];
+                        align_index = (align_index + 1) % alignments.len();
+                        match alignment_to_display(&align) {
+                            Some(align) => Some(json! {{ "align": align }}),
+                            _ => None,
+                        }
                     }
                     _ => None,
                 };
+                if let pulldown_cmark::Tag::Table(aligns) = tag {
+                    alignments = aligns;
+                    align_index = 0;
+                }
                 current_node = Some(VNode {
                     sel: Some(
                         class
                             .map(|e| format!("{}.language-{}", &name, e))
-                            .unwrap_or(name.to_owned()),
+                            .unwrap_or_else(|| name.to_owned()),
                     ),
-                    data: Some(VNodeData {
-                        attrs,
-                        ..Default::default()
-                    }),
+                    data: Some(VNodeData { attrs }),
                     children: Some(vec![]),
                     ..Default::default()
                 });
             }
             pulldown_cmark::Event::End(tag) => {
-                if let pulldown_cmark::Tag::TableHead = &tag {
-                    in_header = false;
-                }
                 if let pulldown_cmark::Tag::Image(_, dest, _) = &tag {
                     let current_node = current_node.as_mut().unwrap();
                     let children = current_node.children.take().unwrap();
@@ -134,7 +149,7 @@ pub fn markdown_to_vdom_with(parser: Parser) -> Option<VNode> {
                         _ => &dest,
                     };
                     let attrs = Some(json! {{ "src": dest.to_string(), "alt": alt }});
-                    if let Some(data) = current_node.data.as_mut() {
+                    if let Some(data) = &mut current_node.data {
                         data.attrs = attrs;
                     }
                 }
@@ -145,10 +160,9 @@ pub fn markdown_to_vdom_with(parser: Parser) -> Option<VNode> {
                         e.push(done)
                     }
                 }
-                hoist_last_text(&mut current_node);
+                // hoist_last_text(&mut current_node);
             }
             pulldown_cmark::Event::Text(text) => {
-                let text = text.escape_debug().to_string();
                 if let Some(e) = borrow_last_text(&mut current_node) {
                     e.push_str(&text)
                 } else if let Some(e) = borrow_children(&mut current_node) {
@@ -162,7 +176,6 @@ pub fn markdown_to_vdom_with(parser: Parser) -> Option<VNode> {
                         // it's put in children to separate it from merging
                         // with other segments.
                         children: Some(vec![VNode::text_node(text.to_string())]),
-                        data: Some(Default::default()),
                         ..Default::default()
                     };
                     e.push(code_node);
@@ -178,16 +191,15 @@ pub fn markdown_to_vdom_with(parser: Parser) -> Option<VNode> {
             // pulldown_cmark::Event::FootnoteReference(_) => todo!(),
             pulldown_cmark::Event::SoftBreak => {
                 if let Some(e) = borrow_last_text(&mut current_node) {
-                    e.push(' ')
+                    e.push('\n')
                 } else if let Some(e) = borrow_children(&mut current_node) {
-                    e.push(VNode::text_node(" ".to_owned()))
+                    e.push(VNode::text_node("\n".to_owned()))
                 }
             }
             pulldown_cmark::Event::HardBreak => {
                 if let Some(e) = borrow_children(&mut current_node) {
                     e.push(VNode {
                         sel: Some("br".to_owned()),
-                        data: Some(Default::default()),
                         ..Default::default()
                     });
                 }
@@ -229,18 +241,31 @@ pub fn markdown_to_vdom_with(parser: Parser) -> Option<VNode> {
 
 #[cfg(test)]
 mod tests {
+    // use assert_json_diff::assert_json_include;
     use pulldown_cmark::Options;
+    use serde_json::Value;
 
     use super::markdown_to_vdom;
 
+    // const SOURCE: &'static str = include_str!("../../markdown_reference.md");
+    const SOURCE: &'static str = "
+asdasd
+
+---
+
+
+asdasd";
+    const VNODE_JSON: &'static str = include_str!("markdown_reference.json");
+
     #[test]
-    fn test_mixed_xml() {
-        let source = "
-$$
-one two \\\\
-three
-$$";
-        let node = markdown_to_vdom(source, Options::all());
-        dbg!(node);
+    fn spec() {
+        // let expected: Value = serde_json::from_str(VNODE_JSON).unwrap();
+        let actual = markdown_to_vdom(SOURCE, Options::all()).unwrap();
+        let json = serde_json::to_string_pretty(&actual).unwrap();
+        println!("{}", &json);
+        // assert_json_include!(
+        // actual: serde_json::to_value(actual).unwrap(),
+        // expected: expected
+        // );
     }
 }
