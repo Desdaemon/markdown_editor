@@ -1,7 +1,0 @@
-{
-  "name": "markdown_ionic_ref_impl",
-  "integrations": {
-    "capacitor": {}
-  },
-  "type": "vue"
-}
