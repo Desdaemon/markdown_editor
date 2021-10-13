@@ -80,20 +80,21 @@ pub type AlignmentMemo = (Vec<Alignment>, usize);
 pub fn attrs_of(
     tag: Tag,
     (alignments, align_index): &mut AlignmentMemo,
-) -> Option<serde_json::Value> {
+) -> Option<(&'static str, String)> {
     match tag {
         pulldown_cmark::Tag::Link(typ, dest, _title) => {
             let href: String = match typ {
                 pulldown_cmark::LinkType::Email => format!("mailto:{}", &dest),
                 _ => dest.to_string(),
             };
-            Some(json! {{ "href": href }})
+            Some(("href", href))
         }
         pulldown_cmark::Tag::TableCell | pulldown_cmark::Tag::TableHead => {
             let align = alignments[*align_index];
             *align_index = (*align_index + 1) % alignments.len();
             match alignment_of(&align) {
-                Some(align) => Some(json! {{ "align": align }}),
+                // Some(align) => Some(json! {{ "align": align }}),
+                Some(align) => Some(("align", align.to_owned())),
                 _ => None,
             }
         }
@@ -102,7 +103,7 @@ pub fn attrs_of(
             *align_index = 0;
             None
         }
-        pulldown_cmark::Tag::List(Some(start)) => Some(json! {{ "start": start }}),
+        pulldown_cmark::Tag::List(Some(start)) => Some(("start", start.to_string())),
         _ => None,
     }
 }
@@ -142,7 +143,7 @@ pub fn markdown_to_vdom_with<'a>(
                 }
                 let name = display_of(&tag);
                 let class = class_of(&tag);
-                let attrs = attrs_of(tag, &mut memo);
+                let attrs = attrs_of(tag, &mut memo).map(|(key, val)| json!{{ key: val }});
                 current_node = Some(VNode {
                     sel: Some(
                         class

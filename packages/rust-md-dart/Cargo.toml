@@ -6,3 +6,6 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+flutter_rust_bridge = "1.0.3"
+pulldown-cmark = { version = "0.8.0", features = ["simd"], default-features = false }
+rust-md = { path = "../rust-md" }

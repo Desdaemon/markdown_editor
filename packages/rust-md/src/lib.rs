@@ -1,9 +1,9 @@
-mod events;
+pub mod events;
 mod log;
-mod markdown;
-mod utils;
-mod vnode;
-mod xml;
+pub mod markdown;
+pub mod utils;
+pub mod vnode;
+pub mod xml;
 
 use events::{remap_table_headers, wrap_code_block};
 use js_sys::Function;
@@ -19,12 +19,6 @@ static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
 
 use pulldown_cmark::{html::push_html, Event, Options, Parser};
 use serde::Deserialize;
-// use xml::xml_to_vdom;
-
-#[wasm_bindgen(start)]
-pub fn run() {
-    utils::set_panic_hook();
-}
 
 #[wasm_bindgen]
 extern "C" {
