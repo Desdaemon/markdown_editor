@@ -1,13 +1,8 @@
 import { createApp } from "petite-vue";
 import { VNode, h, thunk, toVNode } from "snabbdom";
-// import { parse_vdom } from "rust-md";
-const rustmd = import("rust-md");
 import { createVirtualRoot } from "./utils";
-import katex from "katex";
+import { render as renderKatexInElm } from "katex";
 import "./markdown.css";
-
-// let initDone = false;
-// let prom = initWasm().then(() => (initDone = true));
 
 const PREVIEW_SEL = "div#preview.col.markdown-body";
 const KATEX_RE = /(\${1,2})([^\0]+?)\1/g;
@@ -20,6 +15,7 @@ const KATEX_IGNORE = [
   "code",
   "option",
 ];
+let REFERENCE: string;
 
 function parseTemplate(template: string) {
   return parseTemplate.parser.parseFromString(template, "text/html").body;
@@ -31,7 +27,7 @@ const editor = document.getElementById("editor")!;
 
 function Katex(source: string, displayMode = false) {
   const span = document.createElement("span");
-  katex.render(source, span, {
+  renderKatexInElm(source, span, {
     displayMode,
     throwOnError: false,
   });
@@ -90,26 +86,7 @@ function renderKatex(template: VNode) {
   }
 }
 
-declare global {
-  interface String {
-    hashCode(): number;
-  }
-}
-String.prototype.hashCode = function () {
-  var hash = 0,
-    i,
-    chr;
-  if (this.length === 0) return hash;
-  for (i = 0; i < this.length; i++) {
-    chr = this.charCodeAt(i);
-    hash = (hash << 5) - hash + chr;
-    hash |= 0; // Convert to 32bit integer
-  }
-  return hash;
-};
-
 let handle: any;
-
 class App {
   indentCount = 0;
   responseTime = 0;
@@ -119,16 +96,17 @@ class App {
       this.renderPreview();
     });
   }
-  renderPreview(source = this.source) {
+  async renderPreview(source = this.source) {
     const t0 = performance.now();
     if (source) {
-      rustmd.then(({ parse_vdom }) => {
-        const template = parse_vdom(source);
-        template.sel = PREVIEW_SEL;
-        template.data ??= {};
-        renderKatex(template);
-        this.responseTime = performance.now() - t0;
-      });
+      const { parse_vdom } = await import("rust-md");
+      // import("rust-md").then(({ parse_vdom }) => {
+      const template = parse_vdom(source);
+      template.sel = PREVIEW_SEL;
+      template.data ??= {};
+      renderKatex(template);
+      this.responseTime = performance.now() - t0;
+      // });
     } else {
       updatePreview(h(PREVIEW_SEL, {}, []));
     }
@@ -147,6 +125,13 @@ class App {
     const target = event?.target || editor;
     const elm: any = preview.elm!;
     elm.scrollTop = target.scrollTop * (elm.scrollHeight / target.scrollHeight);
+  }
+  async stressTest() {
+    REFERENCE ??= await fetch(
+      new URL("../../markdown_reference.md", import.meta.url).toString()
+    ).then((e) => e.text());
+    this.source = REFERENCE;
+    await this.renderPreview();
   }
 }
 createApp(new App()).mount();
