@@ -1,0 +1,6 @@
+{
+  "appId": "com.desdaemon.reference_impl",
+  "appName": "reference_impl",
+  "webDir": "dist",
+  "bundledWebRuntime": false
+}

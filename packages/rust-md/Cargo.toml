@@ -3,6 +3,9 @@ name = "rust-md"
 version = "0.1.0"
 authors = ["Viet Dinh <54ckb0y789@gmail.com>"]
 edition = "2018"
+description = "Various utilities for Markdown"
+repository = "https://github.com/Desdaemon/markdown_editor"
+license = ""
 
 [lib]
 crate-type = ["cdylib", "rlib"]
@@ -25,13 +28,13 @@ console_error_panic_hook = { version = "0.1.6", optional = true }
 #
 # Unfortunately, `wee_alloc` requires nightly Rust when targeting wasm for now.
 wee_alloc = { version = "0.4.5", optional = true }
-# pulldown-cmark = "0.8.0"
 serde_json = "1.0.64"
 serde = { version = "1.0.126", features = ["derive"] }
-# quick-xml = "0.22.0"
 serde-wasm-bindgen = { version = "0.3.0", optional = true }
 quick-xml = "0.22.0"
-nom = "6.2.1"
+js-sys = "0.3.51"
+# quick-xml = "0.22.0"
+# nom = "6.2.1"
 
 [dependencies.pulldown-cmark]
 version = "0.8.0"
