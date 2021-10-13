@@ -5,7 +5,10 @@ mod utils;
 mod vnode;
 mod xml;
 
-use markdown::markdown_to_vdom;
+use events::{remap_table_headers, wrap_code_block};
+use js_sys::Function;
+use markdown::{attrs_of, class_of, display_of, markdown_to_vdom};
+use serde_json::json;
 use wasm_bindgen::prelude::*;
 
 // When the `wee_alloc` feature is enabled, use `wee_alloc` as the global
@@ -14,8 +17,9 @@ use wasm_bindgen::prelude::*;
 #[global_allocator]
 static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
 
-use pulldown_cmark::{html::push_html, Options, Parser};
+use pulldown_cmark::{html::push_html, Event, Options, Parser};
 use serde::Deserialize;
+// use xml::xml_to_vdom;
 
 #[wasm_bindgen(start)]
 pub fn run() {
@@ -39,7 +43,12 @@ struct MarkdownOptions {
 
 #[wasm_bindgen(typescript_custom_section)]
 const TYPESCRIPT: &'static str = "
-interface MarkdownOptions {
+export function markdown_events(
+    markdown: string,
+    options: MarkdownOptions | undefined,
+    callback: (tag: string, config: any) => void
+): void
+export interface MarkdownOptions {
     tables?: boolean
     footnotes?: boolean
     tasklist?: boolean
@@ -124,6 +133,86 @@ pub fn parse_vdom(markdown: &str, options: Option<IMarkdownOptions>) -> JsValue 
 
     #[cfg(feature = "serde-wasm-bindgen")]
     return serde_wasm_bindgen::to_value(&vnode).unwrap();
+}
+
+#[wasm_bindgen]
+pub fn markdown_events(
+    markdown: &str,
+    options: Option<IMarkdownOptions>,
+    callback: js_sys::Function,
+) {
+    let opts = resolve_options(options);
+    let parser = Parser::new_ext(markdown, opts);
+    let events = remap_table_headers(parser);
+    let events = wrap_code_block(events);
+    let mut memo = (vec![], 0usize);
+    let null = JsValue::null();
+    for event in events {
+        match event {
+            Event::Start(tag) => {
+                let name = display_of(&tag);
+                let class = class_of(&tag);
+                let attrs = attrs_of(tag, &mut memo);
+                let props = JsValue::from_serde(&json! {{
+                    "class": class,
+                    "attrs": attrs
+                }})
+                .unwrap();
+                let _ = Function::call2(&callback, &null, &JsValue::from_str(name), &props);
+            }
+            Event::End(tag) => {
+                let name = display_of(&tag);
+                let _ = Function::call1(&callback, &null, &JsValue::from_str(name));
+            }
+            Event::Text(contents) => {
+                let _ = Function::call2(
+                    &callback,
+                    &null,
+                    &JsValue::from_str("text"),
+                    &JsValue::from_str(&contents),
+                );
+            }
+            Event::Code(contents) => {
+                let _ = Function::call2(
+                    &callback,
+                    &null,
+                    &JsValue::from_str("code"),
+                    &JsValue::from_str(&contents),
+                );
+            }
+            Event::Html(html) => {
+                let _ = Function::call2(
+                    &callback,
+                    &null,
+                    &JsValue::from_str("html"),
+                    &JsValue::from_str(&html),
+                );
+            }
+            Event::SoftBreak => {
+                let _ = Function::call2(
+                    &callback,
+                    &null,
+                    &JsValue::from_str("text"),
+                    &JsValue::from_str("\n"),
+                );
+            }
+            Event::HardBreak => {
+                let _ = Function::call1(&callback, &null, &JsValue::from_str("br"));
+            }
+            Event::Rule => {
+                let _ = Function::call1(&callback, &null, &JsValue::from_str("hr"));
+            }
+            Event::TaskListMarker(checked) => {
+                let _ = Function::call2(
+                    &callback,
+                    &null,
+                    &JsValue::from_str("task"),
+                    &JsValue::from_bool(checked),
+                );
+            }
+            _ => {}
+        }
+    }
 }
 
 #[cfg(test)]

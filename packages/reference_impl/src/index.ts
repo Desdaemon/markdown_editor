@@ -1,11 +1,13 @@
 import { createApp } from "petite-vue";
 import { VNode, h, thunk, toVNode } from "snabbdom";
-import initWasm, { parse_vdom } from "rust-md";
+// import { parse_vdom } from "rust-md";
+const rustmd = import("rust-md");
 import { createVirtualRoot } from "./utils";
 import katex from "katex";
+import "./markdown.css";
 
-let initDone = false;
-let prom = initWasm().then(() => (initDone = true));
+// let initDone = false;
+// let prom = initWasm().then(() => (initDone = true));
 
 const PREVIEW_SEL = "div#preview.col.markdown-body";
 const KATEX_RE = /(\${1,2})([^\0]+?)\1/g;
@@ -117,23 +119,19 @@ class App {
       this.renderPreview();
     });
   }
-  async renderPreview(source = this.source) {
+  renderPreview(source = this.source) {
     const t0 = performance.now();
     if (source) {
-      let template: VNode;
-      if (initDone) {
-        template = parse_vdom(source);
-      } else {
-        await prom;
-        template = parse_vdom(source);
-      }
-      template.sel = PREVIEW_SEL;
-      template.data ??= {};
-      renderKatex(template);
+      rustmd.then(({ parse_vdom }) => {
+        const template = parse_vdom(source);
+        template.sel = PREVIEW_SEL;
+        template.data ??= {};
+        renderKatex(template);
+        this.responseTime = performance.now() - t0;
+      });
     } else {
       updatePreview(h(PREVIEW_SEL, {}, []));
     }
-    this.responseTime = performance.now() - t0;
   }
   onInput(event: any) {
     this.source = event.target.value;

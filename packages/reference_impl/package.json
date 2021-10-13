@@ -2,29 +2,39 @@
   "name": "reference_impl",
   "version": "1.0.0",
   "description": "",
-  "source": "src/index.html",
+  "private": true,
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "parcel",
-    "build": "parcel build"
+    "start": "webpack serve --open",
+    "build": "webpack --mode=production",
+    "android": "cap run android"
   },
   "author": "Desdaemon",
   "license": "ISC",
   "dependencies": {
+    "@capacitor/android": "^3.2.4",
+    "@capacitor/core": "^3.2.4",
     "katex": "^0.13.18",
     "petite-vue": "^0.3.0",
     "rust-md": "file:../rust-md/pkg",
     "snabbdom": "^3.1.0"
   },
   "devDependencies": {
-    "@parcel/packager-raw-url": "2.0.0-rc.0",
-    "@parcel/transformer-webmanifest": "2.0.0-rc.0",
+    "@capacitor/cli": "^3.2.4",
+    "@swc/core": "^1.2.95",
     "@types/katex": "^0.11.1",
     "@types/markdown-it": "^12.2.3",
     "@types/marked": "^3.0.1",
     "@types/virtual-dom": "^2.1.1",
+    "@wasm-tool/wasm-pack-plugin": "^1.6.0",
+    "css-loader": "^6.4.0",
+    "html-webpack-plugin": "^5.3.2",
     "marked": "^3.0.7",
-    "parcel": "^2.0.0-rc.0",
-    "serve": "^12.0.1"
+    "serve": "^12.0.1",
+    "style-loader": "^3.3.0",
+    "swc-loader": "^0.1.15",
+    "webpack": "^5.58.1",
+    "webpack-cli": "^4.9.0",
+    "webpack-dev-server": "^4.3.1"
   }
 }

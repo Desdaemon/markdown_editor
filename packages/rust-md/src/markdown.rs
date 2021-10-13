@@ -35,7 +35,7 @@ fn borrow_last_text(opt: &mut Option<VNode>) -> Option<&mut String> {
 // }
 // }
 
-fn tag_to_display(tag: &Tag) -> &'static str {
+pub fn display_of(tag: &Tag) -> &'static str {
     match tag {
         pulldown_cmark::Tag::Paragraph => "p",
         pulldown_cmark::Tag::Heading(lvl) => match lvl {
@@ -66,7 +66,48 @@ fn tag_to_display(tag: &Tag) -> &'static str {
     }
 }
 
-fn alignment_to_display(alignment: &Alignment) -> Option<&'static str> {
+pub fn class_of(tag: &Tag) -> Option<String> {
+    match tag {
+        pulldown_cmark::Tag::CodeBlock(pulldown_cmark::CodeBlockKind::Fenced(lang)) => {
+            Some(lang.to_string())
+        }
+        _ => None,
+    }
+}
+
+pub type AlignmentMemo = (Vec<Alignment>, usize);
+
+pub fn attrs_of(
+    tag: Tag,
+    (alignments, align_index): &mut AlignmentMemo,
+) -> Option<serde_json::Value> {
+    match tag {
+        pulldown_cmark::Tag::Link(typ, dest, _title) => {
+            let href: String = match typ {
+                pulldown_cmark::LinkType::Email => format!("mailto:{}", &dest),
+                _ => dest.to_string(),
+            };
+            Some(json! {{ "href": href }})
+        }
+        pulldown_cmark::Tag::TableCell | pulldown_cmark::Tag::TableHead => {
+            let align = alignments[*align_index];
+            *align_index = (*align_index + 1) % alignments.len();
+            match alignment_of(&align) {
+                Some(align) => Some(json! {{ "align": align }}),
+                _ => None,
+            }
+        }
+        pulldown_cmark::Tag::Table(aligns) => {
+            *alignments = aligns;
+            *align_index = 0;
+            None
+        }
+        pulldown_cmark::Tag::List(Some(start)) => Some(json! {{ "start": start }}),
+        _ => None,
+    }
+}
+
+fn alignment_of(alignment: &Alignment) -> Option<&'static str> {
     match alignment {
         Alignment::None => None,
         Alignment::Left => Some("left"),
@@ -91,8 +132,7 @@ pub fn markdown_to_vdom_with<'a>(
         children: Some(vec![]),
         ..Default::default()
     });
-    let mut alignments: Vec<Alignment> = vec![];
-    let mut align_index = 0;
+    let mut memo = (vec![], 0);
 
     for event in events {
         match event {
@@ -100,35 +140,9 @@ pub fn markdown_to_vdom_with<'a>(
                 if let Some(cur) = current_node.take() {
                     node_stack.push(cur);
                 }
-                let name = tag_to_display(&tag);
-                let class = match &tag {
-                    pulldown_cmark::Tag::CodeBlock(pulldown_cmark::CodeBlockKind::Fenced(lang)) => {
-                        Some(lang.to_string())
-                    }
-                    _ => None,
-                };
-                let attrs = match &tag {
-                    pulldown_cmark::Tag::Link(typ, dest, _title) => {
-                        let href: String = match typ {
-                            pulldown_cmark::LinkType::Email => format!("mailto:{}", &dest),
-                            _ => dest.to_string(),
-                        };
-                        Some(json! {{ "href": href }})
-                    }
-                    pulldown_cmark::Tag::TableCell | pulldown_cmark::Tag::TableHead => {
-                        let align = alignments[align_index];
-                        align_index = (align_index + 1) % alignments.len();
-                        match alignment_to_display(&align) {
-                            Some(align) => Some(json! {{ "align": align }}),
-                            _ => None,
-                        }
-                    }
-                    _ => None,
-                };
-                if let pulldown_cmark::Tag::Table(aligns) = tag {
-                    alignments = aligns;
-                    align_index = 0;
-                }
+                let name = display_of(&tag);
+                let class = class_of(&tag);
+                let attrs = attrs_of(tag, &mut memo);
                 current_node = Some(VNode {
                     sel: Some(
                         class
@@ -173,6 +187,7 @@ pub fn markdown_to_vdom_with<'a>(
                 if let Some(e) = borrow_children(&mut current_node) {
                     let code_node = VNode {
                         sel: Some("code".to_owned()),
+                        data: Some(Default::default()),
                         // it's put in children to separate it from merging
                         // with other segments.
                         children: Some(vec![VNode::text_node(text.to_string())]),

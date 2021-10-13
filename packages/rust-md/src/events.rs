@@ -1,17 +1,17 @@
-use nom::bytes::complete::*;
+// use nom::bytes::complete::*;
 use pulldown_cmark::{Event, Tag};
 
-pub fn process_katex<'a>(
-    events: impl Iterator<Item = Event<'a>>,
-) -> impl Iterator<Item = Event<'a>> {
-    events.map(|event| match event {
-        Event::Text(text) => Event::Text(text),
-        Event::HardBreak => {
-            todo!()
-        }
-        e => e,
-    })
-}
+// pub fn process_katex<'a>(
+// events: impl Iterator<Item = Event<'a>>,
+// ) -> impl Iterator<Item = Event<'a>> {
+// events.map(|event| match event {
+// Event::Text(text) => Event::Text(text),
+// Event::HardBreak => {
+// todo!()
+// }
+// e => e,
+// })
+// }
 
 pub fn remap_table_headers<'a>(
     events: impl Iterator<Item = Event<'a>>,
@@ -48,14 +48,14 @@ pub fn wrap_code_block<'a>(
     })
 }
 
-fn is_in_katex(input: &str) -> nom::IResult<&str, bool> {
-    let mut display: Option<bool> = None;
-    let mut input = input;
-    // loop {
-    // if let Some(display) = &display {
-    // } else if let Ok((new_input, opener)) = take_till(alt((tag("$"), tag("$$")))) {
-    // input = new_input;
-    // }
-    // }
-    Ok((input, display.unwrap_or(true)))
-}
+// fn is_in_katex(input: &str) -> nom::IResult<&str, bool> {
+// let mut display: Option<bool> = None;
+// let mut input = input;
+// // loop {
+// // if let Some(display) = &display {
+// // } else if let Ok((new_input, opener)) = take_till(alt((tag("$"), tag("$$")))) {
+// // input = new_input;
+// // }
+// // }
+// Ok((input, display.unwrap_or(true)))
+// }
