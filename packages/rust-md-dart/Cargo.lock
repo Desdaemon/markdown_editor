@@ -63,8 +63,6 @@ dependencies = [
 [[package]]
 name = "flutter_rust_bridge"
 version = "1.0.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4e3025b727097b06042fc091eef5bb2a40eb0cd08c1d94261d425a462077db96"
 dependencies = [
  "allo-isolate",
  "anyhow",
@@ -241,6 +239,8 @@ dependencies = [
 name = "rust-md-dart"
 version = "0.1.0"
 dependencies = [
+ "allo-isolate",
+ "anyhow",
  "flutter_rust_bridge",
  "pulldown-cmark",
  "rust-md",
