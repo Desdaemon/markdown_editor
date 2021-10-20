@@ -1,3 +1,4 @@
+use allo_isolate::ZeroCopyBuffer;
 use anyhow::Result;
 use pulldown_cmark::{Alignment, Event, Options, Parser};
 use rust_md::events;
@@ -5,7 +6,11 @@ use rust_md::markdown::{attrs_of, display_of};
 
 fn borrow_text(elm: &mut Option<Element>) -> Option<&mut String> {
     match elm {
-        Some(Element { text, children, .. }) if children.is_empty() => Some(text),
+        Some(Element {
+            text,
+            children: None,
+            ..
+        }) => Some(text),
         _ => None,
     }
 }
@@ -13,7 +18,7 @@ fn borrow_text(elm: &mut Option<Element>) -> Option<&mut String> {
 #[inline]
 fn borrow_children(elm: &mut Option<Element>) -> Option<&mut Vec<Element>> {
     match elm {
-        Some(Element { children, .. }) => Some(children),
+        Some(Element { children, .. }) => children.as_mut(),
         _ => None,
     }
 }
@@ -27,7 +32,7 @@ pub struct Attribute {
 #[derive(Default, Debug)]
 pub struct Element {
     pub tag: String,
-    pub children: Vec<Element>,
+    pub children: Option<Vec<Element>>,
     pub attributes: Option<Attribute>,
     pub text: String,
 }
@@ -73,13 +78,14 @@ pub fn markdown_to_nodes(markdown: String) -> Result<Option<Element>> {
                 current_node = Some(Element {
                     tag: name.to_owned(),
                     attributes: attr,
+                    children: Some(vec![]),
                     ..Default::default()
                 })
             }
             Event::End(_) => {
                 if let Some(mut e) = node_stack.pop() {
                     let current = current_node.take().unwrap();
-                    e.children.push(current);
+                    e.children.as_mut().unwrap().push(current);
                     current_node = Some(e);
                 }
             }
@@ -87,7 +93,6 @@ pub fn markdown_to_nodes(markdown: String) -> Result<Option<Element>> {
                 if let Some(e) = borrow_text(&mut current_node) {
                     e.push_str(&contents)
                 } else if let Some(e) = borrow_children(&mut current_node) {
-                    // e.push(Node::Text(contents.to_string()))
                     e.push(Element::text(contents.to_string()))
                 }
             }
@@ -95,10 +100,10 @@ pub fn markdown_to_nodes(markdown: String) -> Result<Option<Element>> {
                 if let Some(e) = borrow_children(&mut current_node) {
                     e.push(Element {
                         tag: "code".to_owned(),
-                        children: vec![Element {
+                        children: Some(vec![Element {
                             text: code.to_string(),
                             ..Default::default()
-                        }],
+                        }]),
                         ..Default::default()
                     })
                 }
@@ -107,7 +112,6 @@ pub fn markdown_to_nodes(markdown: String) -> Result<Option<Element>> {
                 if let Some(e) = borrow_text(&mut current_node) {
                     e.push('\n');
                 } else if let Some(e) = borrow_children(&mut current_node) {
-                    // e.push(Node::Text("\n".to_owned()))
                     e.push(Element::text("\n".to_owned()))
                 }
             }
@@ -172,4 +176,32 @@ mod tests {
         // size_of::<*mut i8>(),
         // ));
     }
+}
+
+pub struct OptionGallery {
+    // primitives
+    pub int8: Option<i8>,
+    pub int32: Option<i32>,
+    pub int64: Option<i64>,
+    pub rational: Option<f64>,
+    pub boolean: Option<bool>,
+    // // delegates
+    // pub string: Option<String>,
+    // pub buffer: Option<ZeroCopyBuffer<Vec<u8>>>,
+
+    // // primitive lists, missing i32 and bool
+    // pub uint8_list: Option<Vec<u8>>,
+    // pub int8_list: Option<Vec<i8>>,
+    // pub int64_list: Option<Vec<i64>>,
+    // pub rational_list: Option<Vec<f64>>,
+    // Not supported yet.
+    // pub i32_list: Option<Vec<i32>>,
+    // pub bool_list: Option<Vec<bool>>,
+    // pub boxed_prim: Option<Box<i32>>,
+    // pub opt: Option<Attribute>,
+    // pub boxed: Box<Attribute>,
+}
+
+pub fn passthrough(opt: Option<OptionGallery>) -> Result<Option<OptionGallery>> {
+    Ok(None)
 }

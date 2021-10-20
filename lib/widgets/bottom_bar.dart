@@ -1,11 +1,16 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
+import 'package:flutter/services.dart';
+
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:markdown_editor/screens/main.dart';
 
 class BottomBar extends StatelessWidget {
+  final GlobalKey<ScaffoldState>? scaffoldKey;
   const BottomBar({this.scaffoldKey, Key? key}) : super(key: key);
 
   static void noop() {}
-
-  final GlobalKey<ScaffoldState>? scaffoldKey;
 
   @override
   Widget build(BuildContext context) {
@@ -29,6 +34,17 @@ class BottomBar extends StatelessWidget {
                   const IconButton(icon: Icon(Icons.functions), onPressed: noop, tooltip: 'Math'),
                   const IconButton(icon: Icon(Icons.format_indent_increase), onPressed: noop, tooltip: 'Indent'),
                   const IconButton(icon: Icon(Icons.format_indent_decrease), onPressed: noop, tooltip: 'Dedent'),
+                  // const IconButton(icon: Icon(Icons.monitor_weight), tooltip: 'Stress Test', onPressed: noop),
+                  Consumer(builder: (_, ref, __) {
+                    return IconButton(
+                      icon: const Icon(Icons.monitor_weight),
+                      tooltip: 'Stress Test',
+                      onPressed: () async {
+                        final file = await PlatformAssetBundle().loadString('packages/markdown_reference.md');
+                        ref.read(editorTextControllerProvider).text = file;
+                      },
+                    );
+                  }),
                   MouseRegion(
                     cursor: SystemMouseCursors.click,
                     child: GestureDetector(
@@ -36,6 +52,14 @@ class BottomBar extends StatelessWidget {
                       child: const Text('Spaces: NaN'),
                     ),
                   ),
+                  if (kDebugMode)
+                    IconButton(
+                      icon: const Icon(Icons.format_paint),
+                      tooltip: 'Toggle paint boundaries',
+                      onPressed: () {
+                        debugRepaintRainbowEnabled = !debugRepaintRainbowEnabled;
+                      },
+                    )
                   // const IconButton(icon: Icon(Icons.menu), onPressed: noop, tooltip: 'Menu'),
                 ],
               ),

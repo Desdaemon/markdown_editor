@@ -1,94 +1,121 @@
-import 'package:flutter/material.dart' hide Element;
-import 'package:markdown_editor/core/core.dart';
-import '../wire.dart';
-import 'package:markdown_editor/widgets/bottom_bar.dart';
-import 'package:universal_io/io.dart';
+import 'dart:async';
+
+import 'package:flutter/material.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:markdown_editor/widgets/bottom_bar.dart';
+import 'package:markdown_editor/widgets/custom_markdown.dart';
+import 'package:universal_io/io.dart';
+import 'package:markdown/markdown.dart' as md;
 
-String visitElement(Element? elm) {
-  if (elm == null) return '<empty>';
-  final attr = elm.attributes == null ? '' : ' ${elm.attributes!.key}=${elm.attributes!.val}';
-  final tag = elm.tag.isEmpty ? '#text' : elm.tag;
-  var children = elm.children.map(visitElement).join('\n');
-  if (children.isEmpty) children = elm.text;
-  return '''
-<$tag$attr>
-	$children
-</$tag>''';
-}
-
-final controllerProvider = ChangeNotifierProvider((_) => TextEditingController());
-final sourceProvider = Provider((ref) => ref.watch(controllerProvider).text);
-
-class Main extends StatelessWidget {
-  static final _isMobile = Platform.isAndroid || Platform.isIOS;
-
-  Main({Key? key}) : super(key: key);
-  final GlobalKey<ScaffoldState> scaffoldKey = GlobalKey();
-
-  static Widget buildEditor(BuildContext bc, WidgetRef ref, Widget? _) {
-    final ctl = ref.watch(controllerProvider);
-    return TextField(
-      decoration: const InputDecoration.collapsed(hintText: null),
-      maxLines: null,
-      expands: true,
-      controller: ctl,
-    );
-  }
-
-  static Widget buildPreview(BuildContext bc, WidgetRef ref, Widget? _) {
-    final source = ref.watch(sourceProvider);
-    final nodes = markdownToNodes(markdown: source);
-    return FutureBuilder<Element?>(
-      future: nodes,
-      builder: (bc, snapshot) {
-        final data = snapshot.data;
-        if (data != null) {
-          final children = Text(visitElement(data as dynamic));
-          return children;
-        }
-        return const Text("Loading...");
-      },
-    );
-  }
+class Main extends StatefulWidget {
+  final String? initialValue;
+  const Main({Key? key, this.initialValue}) : super(key: key);
 
   @override
-  Widget build(BuildContext context) =>
-      SafeArea(child: Scaffold(key: scaffoldKey, body: LayoutBuilder(builder: buildLayout)));
+  State<StatefulWidget> createState() => _MainState();
+}
 
-  Widget buildLayout(BuildContext bc, BoxConstraints cons) {
-    final vertical = cons.maxWidth < 700;
+final editorTextControllerProvider = ChangeNotifierProvider((_) => TextEditingController());
+
+class _MainState extends State<Main> {
+  static final _isMobile = Platform.isAndroid || Platform.isIOS;
+
+  final GlobalKey<ScaffoldState> scaffoldKey = GlobalKey();
+  final previewScrollController = ScrollController();
+
+  @override
+  void dispose() {
+    super.dispose();
+    timer?.cancel();
+    previewScrollController.dispose();
+  }
+
+  Timer? timer;
+
+  Widget buildEditor(BuildContext bc, WidgetRef ref, Widget? _) {
+    return NotificationListener<ScrollUpdateNotification>(
+      onNotification: (noti) {
+        if (!previewScrollController.hasClients) return false;
+        final extent = previewScrollController.position.maxScrollExtent / noti.metrics.maxScrollExtent;
+        previewScrollController.jumpTo(noti.metrics.pixels * extent);
+        return true;
+      },
+      child: TextField(
+        decoration: const InputDecoration.collapsed(hintText: null),
+        maxLines: null,
+        expands: true,
+        style: const TextStyle(fontFamily: 'JetBrains Mono'),
+        controller: ref.read(editorTextControllerProvider),
+      ),
+    );
+  }
+
+  Widget buildPreview(BuildContext bc, WidgetRef ref, Widget? _) {
+    return CustomMarkdownWidget(
+      data: ref.watch(editorTextControllerProvider).text,
+      padding: EdgeInsets.zero,
+      controller: previewScrollController,
+      extensionSet: md.ExtensionSet.gitHubFlavored,
+      styleSheet: MarkdownStyleSheet(
+        textScaleFactor: 1.2,
+        code: const TextStyle(fontFamily: 'JetBrains Mono'),
+      ),
+    );
+  }
+
+  Widget buildPage(BuildContext bc, BoxConstraints cons) {
+    final vertical = cons.maxWidth <= 768;
     final children = <Widget>[
       Expanded(
         child: Padding(
           padding: vertical
-              ? const EdgeInsets.fromLTRB(16, 16, 16, 8)
+              ? const EdgeInsets.fromLTRB(16, 0, 16, 8)
               : _isMobile
                   ? const EdgeInsets.fromLTRB(16, 32, 8, 8)
                   : const EdgeInsets.fromLTRB(16, 16, 8, 8),
-          child: const Consumer(builder: buildEditor),
+          child: Consumer(builder: buildEditor),
         ),
       ),
+      if (vertical) const Divider() else const VerticalDivider(),
       Expanded(
         child: Container(
           alignment: Alignment.topLeft,
           padding: vertical
               ? _isMobile
-                  ? const EdgeInsets.fromLTRB(16, 32, 16, 8)
+                  ? const EdgeInsets.fromLTRB(16, 32, 16, 0)
                   : const EdgeInsets.fromLTRB(16, 16, 16, 8)
               : _isMobile
                   ? const EdgeInsets.fromLTRB(8, 32, 16, 8)
                   : const EdgeInsets.fromLTRB(8, 16, 16, 8),
-          child: const Consumer(builder: buildPreview),
+          child: Consumer(builder: buildPreview),
         ),
       )
     ];
-    return Column(children: [
-      if (vertical)
-        ...children.reversed
-      else
-        Expanded(child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: children)),
-      BottomBar(scaffoldKey: scaffoldKey)
-    ]);
+    return Column(
+      children: [
+        if (vertical)
+          ...children.reversed
+        else
+          Expanded(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: children,
+            ),
+          ),
+        BottomBar(scaffoldKey: scaffoldKey),
+      ],
+    );
+  }
+
+  @override
+  Widget build(context) {
+    return SafeArea(
+      top: false,
+      child: Scaffold(
+        key: scaffoldKey,
+        body: LayoutBuilder(builder: buildPage),
+      ),
+    );
   }
 }

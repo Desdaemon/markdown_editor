@@ -1,5 +1,9 @@
 [*.{dart,js,ts}]
 indent_size = 2
 
-[*.{html,rs}]
+[*.{html,rs,xml}]
+indent_size = 4
+
+[*.gradle]
+indent_style = space
 indent_size = 4

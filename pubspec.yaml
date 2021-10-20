@@ -39,6 +39,9 @@ dependencies:
   flutter_rust_bridge:
     path: ../../flutter_rust_bridge/frb_dart
   flutter_riverpod: ^1.0.0-dev.11
+  flutter_markdown: ^0.6.7
+  flutter_math_fork: ^0.4.2+1
+  url_launcher: ^6.0.12
 
 dev_dependencies:
   flutter_test:
@@ -63,9 +66,10 @@ flutter:
   uses-material-design: true
 
   # To add assets to your application, add an assets section, like this:
-  # assets:
-  #   - images/a_dot_burr.jpeg
-  #   - images/a_dot_ham.jpeg
+  assets:
+    - 'packages/markdown_reference.md'
+    # - images/a_dot_burr.jpeg
+    # - images/a_dot_ham.jpeg
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/assets-and-images/#resolution-aware.
@@ -78,7 +82,12 @@ flutter:
   # "family" key with the font family name, and a "fonts" key with a
   # list giving the asset and other descriptors for the font. For
   # example:
-  # fonts:
+  fonts:
+    - family: JetBrains Mono
+      fonts:
+        - asset: lib/assets/fonts/JetBrainsMono-Regular.ttf
+        - asset: lib/assets/fonts/JetBrainsMono-Italic.ttf
+          style: italic
   #   - family: Schyler
   #     fonts:
   #       - asset: fonts/Schyler-Regular.ttf
