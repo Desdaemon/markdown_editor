@@ -5,6 +5,7 @@ import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:markdown_editor/widgets/bottom_bar.dart';
 import 'package:markdown_editor/widgets/custom_markdown.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:universal_io/io.dart';
 import 'package:markdown/markdown.dart' as md;
 
@@ -16,7 +17,46 @@ class Main extends StatefulWidget {
   State<StatefulWidget> createState() => _MainState();
 }
 
-final editorTextControllerProvider = ChangeNotifierProvider((_) => TextEditingController());
+class SourceNotifier extends StateNotifier<String> {
+  final SharedPreferences? sharedPrefs;
+  Timer? timer;
+  SourceNotifier({
+    this.sharedPrefs,
+    String text = '',
+  }) : super(text);
+
+  @override
+  set state(String _state) {
+    sharedPrefs?.setString('source', _state);
+    timer?.cancel();
+    timer = Timer(const Duration(milliseconds: 400), () {
+      super.state = _state;
+    });
+  }
+
+  void setState(String _state) => state = _state;
+}
+
+final sharedPrefsProvider = FutureProvider((_) => SharedPreferences.getInstance());
+final editorTextControllerProvider = Provider((ref) {
+  final s = ref.watch(sharedPrefsProvider);
+  final data = s.asData;
+  if (data != null) {
+    return TextEditingController(text: data.value.getString('source') ?? '');
+  }
+});
+final sourceProvider = StateNotifierProvider<SourceNotifier, String>((ref) {
+  final s = ref.watch(sharedPrefsProvider);
+  final data = s.asData;
+  if (data != null) {
+    return SourceNotifier(
+      sharedPrefs: data.value,
+      text: data.value.getString('source') ?? '',
+    );
+  } else {
+    return SourceNotifier();
+  }
+});
 
 class _MainState extends State<Main> {
   static final _isMobile = Platform.isAndroid || Platform.isIOS;
@@ -46,14 +86,15 @@ class _MainState extends State<Main> {
         maxLines: null,
         expands: true,
         style: const TextStyle(fontFamily: 'JetBrains Mono'),
-        controller: ref.read(editorTextControllerProvider),
+        controller: ref.watch(editorTextControllerProvider),
+        onChanged: ref.read(sourceProvider.notifier).setState,
       ),
     );
   }
 
   Widget buildPreview(BuildContext bc, WidgetRef ref, Widget? _) {
     return CustomMarkdownWidget(
-      data: ref.watch(editorTextControllerProvider).text,
+      data: ref.watch(sourceProvider),
       padding: EdgeInsets.zero,
       controller: previewScrollController,
       extensionSet: md.ExtensionSet.gitHubFlavored,

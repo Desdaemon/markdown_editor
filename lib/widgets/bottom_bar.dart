@@ -41,7 +41,8 @@ class BottomBar extends StatelessWidget {
                       tooltip: 'Stress Test',
                       onPressed: () async {
                         final file = await PlatformAssetBundle().loadString('packages/markdown_reference.md');
-                        ref.read(editorTextControllerProvider).text = file;
+                        ref.read(sourceProvider.notifier).state = file;
+                        ref.read(editorTextControllerProvider)?.text = file;
                       },
                     );
                   }),

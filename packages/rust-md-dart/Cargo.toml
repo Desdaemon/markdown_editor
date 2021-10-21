@@ -12,6 +12,6 @@ crate-type = ["cdylib", "rlib"]
 allo-isolate = "0.1.7"
 anyhow = "1.0.42"
 # flutter_rust_bridge = "1.0.3"
-flutter_rust_bridge = { path = "../../../../flutter_rust_bridge/frb_rust" }
+flutter_rust_bridge = "1.2.0"
 pulldown-cmark = { version = "0.8.0", features = ["simd"], default-features = false }
 rust-md = { path = "../rust-md" }

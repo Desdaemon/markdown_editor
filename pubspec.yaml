@@ -42,6 +42,7 @@ dependencies:
   flutter_markdown: ^0.6.7
   flutter_math_fork: ^0.4.2+1
   url_launcher: ^6.0.12
+  shared_preferences: ^2.0.8
 
 dev_dependencies:
   flutter_test:
