@@ -3,11 +3,13 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:markdown_editor/core/core.dart';
 import 'package:markdown_editor/widgets/bottom_bar.dart';
 import 'package:markdown_editor/widgets/custom_markdown.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:universal_io/io.dart';
-import 'package:markdown/markdown.dart' as md;
+
+import '../element.dart';
 
 class Main extends StatefulWidget {
   final String? initialValue;
@@ -57,9 +59,15 @@ final sourceProvider = StateNotifierProvider<SourceNotifier, String>((ref) {
     return SourceNotifier();
   }
 });
+final astProvider = FutureProvider((ref) async {
+  final source = ref.watch(sourceProvider);
+  final ast = await parse(markdown: source);
+  return ast?.map(ElementAdapter.from).toList();
+});
 
 class _MainState extends State<Main> {
   static final _isMobile = Platform.isAndroid || Platform.isIOS;
+  Widget? _cache;
 
   final GlobalKey<ScaffoldState> scaffoldKey = GlobalKey();
   final previewScrollController = ScrollController();
@@ -93,15 +101,20 @@ class _MainState extends State<Main> {
   }
 
   Widget buildPreview(BuildContext bc, WidgetRef ref, Widget? _) {
-    return CustomMarkdownWidget(
-      data: ref.watch(sourceProvider),
+    final ast = ref.watch(astProvider);
+    if (ast.asData?.value == null) {
+      return _cache ?? const SizedBox();
+    }
+    return _cache = CustomMarkdownWidget(
+      ast: ast.asData!.value!,
       padding: EdgeInsets.zero,
       controller: previewScrollController,
-      extensionSet: md.ExtensionSet.gitHubFlavored,
-      styleSheet: MarkdownStyleSheet(
-        textScaleFactor: 1.2,
-        code: const TextStyle(fontFamily: 'JetBrains Mono'),
-      ),
+      styleSheet: MarkdownStyleSheet.fromTheme(Theme.of(bc)).merge(MarkdownStyleSheet(
+        textScaleFactor: 1,
+        code: const TextStyle(
+          fontFamily: 'JetBrains Mono',
+        ),
+      )),
     );
   }
 

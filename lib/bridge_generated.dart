@@ -14,7 +14,7 @@ abstract class RustMdDart extends FlutterRustBridgeBase<RustMdDartWire> {
 
   RustMdDart.raw(RustMdDartWire inner) : super(inner);
 
-  Future<List<Element>> parse({required String markdown, dynamic hint});
+  Future<List<Element>?> parse({required String markdown, dynamic hint});
 }
 
 class Element {
@@ -47,11 +47,11 @@ class Attribute {
 class RustMdDartImpl extends RustMdDart {
   RustMdDartImpl.raw(RustMdDartWire inner) : super.raw(inner);
 
-  Future<List<Element>> parse({required String markdown, dynamic hint}) =>
+  Future<List<Element>?> parse({required String markdown, dynamic hint}) =>
       executeNormal(FlutterRustBridgeTask(
           debugName: 'parse',
           callFfi: (port) => inner.wire_parse(port, _api2wire_String(markdown)),
-          parseSuccessData: _wire2api_list_element,
+          parseSuccessData: _wire2api_opt_list_element,
           hint: hint));
 
   // Section: api2wire
@@ -67,6 +67,11 @@ class RustMdDartImpl extends RustMdDart {
 
   int _api2wire_u8(int raw) {
     return raw;
+  }
+
+  ffi.Pointer<wire_list_element> _api2wire_opt_list_element(
+      List<Element>? raw) {
+    return raw == null ? ffi.nullptr : _api2wire_list_element(raw);
   }
 
   ffi.Pointer<wire_list_element> _api2wire_list_element(List<Element> raw) {
@@ -89,11 +94,6 @@ class RustMdDartImpl extends RustMdDart {
       _api_fill_to_wire_attribute(raw[i], ans.ref.ptr[i]);
     }
     return ans;
-  }
-
-  ffi.Pointer<wire_list_element> _api2wire_opt_list_element(
-      List<Element>? raw) {
-    return raw == null ? ffi.nullptr : _api2wire_list_element(raw);
   }
 
   // Section: api_fill_to_wire
@@ -121,6 +121,10 @@ Uint8List _wire2api_uint_8_list(dynamic raw) {
 
 int _wire2api_u8(dynamic raw) {
   return raw as int;
+}
+
+List<Element>? _wire2api_opt_list_element(dynamic raw) {
+  return raw == null ? null : _wire2api_list_element(raw);
 }
 
 List<Element> _wire2api_list_element(dynamic raw) {
@@ -154,10 +158,6 @@ Attribute _wire2api_attribute(dynamic raw) {
     key: _wire2api_String(arr[0]),
     value: _wire2api_String(arr[1]),
   );
-}
-
-List<Element>? _wire2api_opt_list_element(dynamic raw) {
-  return raw == null ? null : _wire2api_list_element(raw);
 }
 
 // ignore_for_file: camel_case_types, non_constant_identifier_names, avoid_positional_boolean_parameters, annotate_overrides

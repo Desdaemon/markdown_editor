@@ -19,22 +19,6 @@ fn borrow_last_text(opt: &mut Option<VNode>) -> Option<&mut String> {
     }
 }
 
-// fn hoist_last_text(opt: &mut Option<VNode>) {
-// match opt {
-// Some(node) => match &node.children {
-// Some(vec) if vec.len() == 1 => match vec.last() {
-// Some(VNode { text, .. }) if text.is_some() => {
-// let text = node.children.take().unwrap().pop().unwrap().text;
-// node.text = text;
-// }
-// _ => {}
-// },
-// _ => {}
-// },
-// _ => {}
-// }
-// }
-
 pub fn display_of(tag: &Tag) -> &'static str {
     match tag {
         pulldown_cmark::Tag::Paragraph => "p",
@@ -62,7 +46,7 @@ pub fn display_of(tag: &Tag) -> &'static str {
         pulldown_cmark::Tag::Strikethrough => "s",
         pulldown_cmark::Tag::Link(_, _, _) => "a",
         pulldown_cmark::Tag::Image(_, _, _) => "img",
-        _ => "!", // comment
+        _ => "span", // comment
     }
 }
 
@@ -92,11 +76,7 @@ pub fn attrs_of(
         pulldown_cmark::Tag::TableCell | pulldown_cmark::Tag::TableHead => {
             let align = alignments[*align_index];
             *align_index = (*align_index + 1) % alignments.len();
-            match alignment_of(&align) {
-                // Some(align) => Some(json! {{ "align": align }}),
-                Some(align) => Some(("align", align.to_owned())),
-                _ => None,
-            }
+            alignment_of(&align).map(|align| ("align", align.to_owned()))
         }
         pulldown_cmark::Tag::Table(aligns) => {
             *alignments = aligns;
@@ -143,7 +123,7 @@ pub fn markdown_to_vdom_with<'a>(
                 }
                 let name = display_of(&tag);
                 let class = class_of(&tag);
-                let attrs = attrs_of(tag, &mut memo).map(|(key, val)| json!{{ key: val }});
+                let attrs = attrs_of(tag, &mut memo).map(|(key, val)| json! {{ key: val }});
                 current_node = Some(VNode {
                     sel: Some(
                         class
@@ -160,8 +140,8 @@ pub fn markdown_to_vdom_with<'a>(
                     let current_node = current_node.as_mut().unwrap();
                     let children = current_node.children.take().unwrap();
                     let alt = match children.last() {
-                        Some(last) => last.text.as_deref().unwrap_or(&dest),
-                        _ => &dest,
+                        Some(last) => last.text.as_deref().unwrap_or(dest),
+                        _ => dest,
                     };
                     let attrs = Some(json! {{ "src": dest.to_string(), "alt": alt }});
                     if let Some(data) = &mut current_node.data {
@@ -243,7 +223,6 @@ pub fn markdown_to_vdom_with<'a>(
                             "disabled": "",
                             "checked": checked
                         })),
-                        ..Default::default()
                     }),
                     ..Default::default()
                 });
@@ -259,19 +238,19 @@ pub fn markdown_to_vdom_with<'a>(
 mod tests {
     // use assert_json_diff::assert_json_include;
     use pulldown_cmark::Options;
-    use serde_json::Value;
+    // use serde_json::Value;
 
     use super::markdown_to_vdom;
 
     // const SOURCE: &'static str = include_str!("../../markdown_reference.md");
-    const SOURCE: &'static str = "
+    const SOURCE: &str = "
 asdasd
 
 ---
 
 
 asdasd";
-    const VNODE_JSON: &'static str = include_str!("markdown_reference.json");
+    // const VNODE_JSON: &'static str = include_str!("markdown_reference.json");
 
     #[test]
     fn spec() {

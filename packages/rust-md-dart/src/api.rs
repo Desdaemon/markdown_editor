@@ -1,5 +1,5 @@
 use anyhow::Result;
-use pulldown_cmark::{Event, Options, Parser};
+use pulldown_cmark::{Event, Options, Parser, Tag};
 use rust_md::events::{remap_table_headers, wrap_code_block};
 use rust_md::markdown::{attrs_of, class_of, display_of};
 
@@ -57,17 +57,16 @@ fn borrow_text(this: &mut Option<Element>) -> Option<&mut String> {
     }
 }
 
-pub fn parse(markdown: String) -> Result<Vec<Element>> {
+pub fn parse(markdown: String) -> Result<Option<Vec<Element>>> {
     let parser = Parser::new_ext(&markdown, Options::all());
     let events = remap_table_headers(wrap_code_block(parser));
 
-    let mut stack: Vec<Element> = vec![Element {
+    let mut stack: Vec<Element> = vec![];
+    let mut current: Option<Element> = Some(Element {
         children: Some(Vec::new()),
         tag: "template".to_owned(),
         attributes: None,
-    }];
-    let mut current: Option<Element> = None;
-
+    });
     let mut memo = (vec![], 0);
 
     for event in events {
@@ -100,12 +99,24 @@ pub fn parse(markdown: String) -> Result<Vec<Element>> {
                     children: Some(Vec::new()),
                 });
             }
-            Event::End(_) => {
+            Event::End(tag) => {
+                if let Tag::Image(_, dest, _) = &tag {
+                    let current = current.as_mut().unwrap();
+                    let mut children = current.children.take().unwrap();
+                    let alt = match children.pop() {
+                        Some(last) => last.tag,
+                        _ => dest.to_string(),
+                    };
+                    current.attributes = Some(vec![
+                        Attribute::new("src".to_owned(), dest.to_string()),
+                        Attribute::new("alt".to_owned(), alt),
+                    ]);
+                }
                 let mut prev = stack.pop();
                 borrow_children(&mut prev)
                     .unwrap()
                     .push(current.take().unwrap());
-                current = Some(prev.unwrap());
+                current = prev;
             }
             Event::Text(text) => {
                 if let Some(last) = borrow_text(&mut current) {
@@ -155,25 +166,9 @@ pub fn parse(markdown: String) -> Result<Vec<Element>> {
                 attributes: Some(vec![]),
                 children: None,
             }),
-            other => {
-                todo!("{:?}", other)
-            }
+            _ => {}
         }
     }
 
-    Ok(current.take().unwrap().children.unwrap())
-}
-
-#[cfg(test)]
-mod tests {
-
-    use super::parse;
-
-    const SOURCE: &str = include_str!("../../markdown_reference.md");
-
-    #[test]
-    fn sanity_check() {
-        let doc = parse(SOURCE.to_owned()).unwrap();
-        dbg!(core::mem::size_of_val(&*doc));
-    }
+    Ok(current.take().map(|x| x.children.unwrap_or_else(Vec::new)))
 }

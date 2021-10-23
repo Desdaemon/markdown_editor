@@ -122,6 +122,16 @@ impl Wire2Api<u8> for u8 {
     }
 }
 
+impl Wire2Api<Option<Vec<Element>>> for *mut wire_list_element {
+    fn wire2api(self) -> Option<Vec<Element>> {
+        if self.is_null() {
+            None
+        } else {
+            Some(self.wire2api())
+        }
+    }
+}
+
 impl Wire2Api<Vec<Element>> for *mut wire_list_element {
     fn wire2api(self) -> Vec<Element> {
         let vec = unsafe {
@@ -167,16 +177,6 @@ impl Wire2Api<Attribute> for wire_Attribute {
         Attribute {
             key: self.key.wire2api(),
             value: self.value.wire2api(),
-        }
-    }
-}
-
-impl Wire2Api<Option<Vec<Element>>> for *mut wire_list_element {
-    fn wire2api(self) -> Option<Vec<Element>> {
-        if self.is_null() {
-            None
-        } else {
-            Some(self.wire2api())
         }
     }
 }

@@ -68,6 +68,18 @@ set_target_properties(${BINARY_NAME}
 # them to the application.
 include(flutter/generated_plugins.cmake)
 
+# Running cargo build
+# include(FetchContent)
+
+# FetchContent_Declare(
+  # Corrosion
+  # GIT_REPOSITORY https://github.com/AndrewGaspar/corrosion.git
+  # GIT_TAG origin/master
+# )
+# FetchContent_MakeAvailable(Corrosion)
+
+# corrosion_import_crate(MANIFEST_PATH ../packages/rust-md-dart/Cargo.toml)
+# target_link_libraries(${BINARY_NAME} PUBLIC rust-md-dart)
 
 # === Installation ===
 # By default, "installing" just makes a relocatable bundle in the build

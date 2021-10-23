@@ -7,6 +7,8 @@ class ThunkWidget extends StatefulWidget {
   const ThunkWidget({this.child, Key? key, this.config}) : super(key: key);
   @override
   State<StatefulWidget> createState() => _ThunkWidgetState();
+
+  static ThunkWidget from(Widget child) => ThunkWidget(child: child);
 }
 
 class _ThunkWidgetState extends State<ThunkWidget> with AutomaticKeepAliveClientMixin {
