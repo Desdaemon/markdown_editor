@@ -36,7 +36,22 @@ class BottomBar extends StatelessWidget {
                   const IconButton(icon: Icon(Icons.functions), onPressed: noop, tooltip: 'Math'),
                   const IconButton(icon: Icon(Icons.format_indent_increase), onPressed: noop, tooltip: 'Indent'),
                   const IconButton(icon: Icon(Icons.format_indent_decrease), onPressed: noop, tooltip: 'Dedent'),
-                  // const IconButton(icon: Icon(Icons.monitor_weight), tooltip: 'Stress Test', onPressed: noop),
+                  Consumer(builder: (bc, ref, __) {
+                    return IconButton(
+                      icon: const Icon(Icons.save),
+                      tooltip: 'Save',
+                      // onPressed: ref.read(sourceProvider.notifier).save,
+                      onPressed: () {
+                        ref.read(sourceProvider.notifier).save();
+                        ScaffoldMessenger.of(bc).showSnackBar(const SnackBar(
+                          content: Text('Saved.'),
+                          behavior: SnackBarBehavior.floating,
+                          margin: EdgeInsets.fromLTRB(16, 0, 16, 48),
+                          backgroundColor: Colors.green,
+                        ));
+                      },
+                    );
+                  }),
                   Consumer(builder: (_, ref, __) {
                     return IconButton(
                       icon: const Icon(Icons.monitor_weight),

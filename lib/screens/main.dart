@@ -29,11 +29,14 @@ class SourceNotifier extends StateNotifier<String> {
 
   @override
   set state(String _state) {
-    sharedPrefs?.setString('source', _state);
     timer?.cancel();
     timer = Timer(const Duration(milliseconds: 400), () {
       super.state = _state;
     });
+  }
+
+  void save() {
+    sharedPrefs?.setString('source', state);
   }
 
   void setState(String _state) => state = _state;
