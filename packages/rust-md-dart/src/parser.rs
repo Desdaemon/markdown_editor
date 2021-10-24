@@ -1,52 +1,78 @@
 use nom::branch::alt;
-use nom::bytes::complete::{
-    is_not, tag, take, take_till1, take_until, take_until1, take_while_m_n,
-};
-use nom::character::complete::{anychar, char, none_of};
-use nom::combinator::{eof, map, opt, rest_len};
-use nom::combinator::{map_parser, map_res, recognize};
-use nom::sequence::{delimited, pair, preceded};
-use nom::sequence::{terminated, tuple};
+use nom::bytes::complete::{is_not, tag, take, take_until, take_while_m_n};
+use nom::character::complete::{char, none_of};
+use nom::combinator::recognize;
+use nom::combinator::{eof, map};
+use nom::multi::many0;
+use nom::sequence::delimited;
+use nom::sequence::terminated;
 use nom::IResult;
 
+#[derive(Debug)]
 pub enum InlineElement<'a> {
     MathDisplay(&'a str),
     MathText(&'a str),
     Plain(&'a str),
 }
 
-fn parse_math_display(input: &str) -> IResult<&str, InlineElement> {
-    let (input, inner) = delimited(tag("$$"), take_until("$$"), tag("$$"))(input)?;
-    Ok((input, InlineElement::MathDisplay(inner)))
+pub fn parse_math(input: &str) -> IResult<&str, Vec<InlineElement>> {
+    many0(alt((parse_math_display, parse_math_text)))(input)
 }
 
+fn parse_math_display(input: &str) -> IResult<&str, InlineElement> {
+    map(
+        delimited(tag("$$"), take_until("$$"), tag("$$")),
+        InlineElement::MathDisplay,
+    )(input)
+}
+
+fn parse_math_plain(input: &str) -> IResult<&str, InlineElement> {
+    map(is_not("$"), InlineElement::Plain)(input)
+}
+
+/// Recognizes one or two non-space characters.
 fn one_or_two_non_space(input: &str) -> IResult<&str, &str> {
     take_while_m_n(1, 2, |c| c != ' ')(input)
 }
 
-fn take_one_less(len: usize) -> FnMut(&str) -> IResult<&str, &str> {}
+fn take_one_less(input: &str) -> IResult<&str, &str> {
+    take(input.len() - 1)(input)
+}
 
-fn begin_end_non_space(input: &str) -> IResult<&str, &str> {
-    let (input, inner) = delimited(char('$'), is_not("$"), char('$'))(input)?;
-    let (_, maybe_inner) = opt(terminated(take_while_m_n(1, 2, |c| c != ' '), eof))(inner)?;
-    if let Some(inner) = maybe_inner {
-        return Ok((input, inner));
+fn math_wrapped(input: &str) -> IResult<&str, &str> {
+    delimited(char('$'), is_not("$"), char('$'))(input)
+}
+
+fn parse_math_text(input: &str) -> IResult<&str, InlineElement> {
+    match math_wrapped(input) {
+        Ok((input, inner)) => {
+            let (_, inner) = alt((
+                terminated(one_or_two_non_space, eof),
+                recognize(delimited(none_of(" "), take_one_less, none_of(" "))),
+            ))(inner)?;
+            Ok((input, InlineElement::MathText(inner)))
+        }
+        _ => map(is_not("$"), InlineElement::Plain)(input),
     }
-    let (_, inner) = recognize(delimited(
-        none_of(" "),
-        map(rest_len, |len| take(len - 1)),
-        none_of(" "),
-    ))(inner)?;
-    Ok((input, inner))
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::parser::begin_end_non_space;
+
+    use super::parse_math;
 
     #[test]
-    fn sanity_check() {
-        let output = begin_end_non_space("$ asd$ sdfkljsdfkje").unwrap();
-        dbg!(output);
+    fn test_begin_end_non_space() {
+        let res = parse_math(
+            "
+let the result of $1 + 1$ be $2$.
+some $1, $2.
+
+$$
+\\int_0^1f(x)dx = F(x)+C
+$$",
+        )
+        .unwrap();
+        dbg!(res);
     }
 }

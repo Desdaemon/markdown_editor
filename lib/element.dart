@@ -13,7 +13,7 @@ class ElementAdapter extends md.Element {
     }
     if (elm.children != null) {
       _children = elm.children!.map(ElementAdapter.from).toList();
-    } else {
+    } else if (elm.attributes == null) {
       _children = [md.Text(elm.tag)];
     }
   }
