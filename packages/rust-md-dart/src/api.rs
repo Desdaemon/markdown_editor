@@ -1,7 +1,9 @@
 use anyhow::Result;
-use pulldown_cmark::{Event, Options, Parser, Tag};
+use pulldown_cmark::{CowStr, Event, Options, Parser, Tag};
 use rust_md::events::{remap_table_headers, wrap_code_block};
 use rust_md::markdown::{attrs_of, class_of, display_of};
+
+use crate::parser::{parse_math, InlineElement};
 
 #[derive(Debug)]
 pub struct Element {
@@ -57,9 +59,35 @@ fn borrow_text(this: &mut Option<Element>) -> Option<&mut String> {
     }
 }
 
+fn transform_line_breaks<'a>(
+    events: impl Iterator<Item = Event<'a>>,
+) -> impl Iterator<Item = Event<'a>> {
+    events
+        .map(|evt| match evt {
+            Event::SoftBreak => Event::Text(CowStr::Borrowed(" ")),
+            Event::HardBreak => Event::Text(CowStr::Borrowed("\n\n")),
+            evt => evt,
+        })
+        .scan(None, |acc, evt| match (acc.as_mut(), evt) {
+            (None, Event::Text(text)) => {
+                *acc = Some(text.to_string());
+                // Returning a None here would short-circuit the iterator,
+                // so we yield an empty list instead.
+                Some(vec![])
+            }
+            (Some(acc), Event::Text(text)) => {
+                acc.push_str(&text);
+                Some(vec![])
+            }
+            (Some(_), evt) => Some(vec![Event::Text(CowStr::from(acc.take().unwrap())), evt]),
+            (None, evt) => Some(vec![evt]),
+        })
+        .flatten()
+}
+
 pub fn parse(markdown: String) -> Result<Option<Vec<Element>>> {
     let parser = Parser::new_ext(&markdown, Options::all());
-    let events = remap_table_headers(wrap_code_block(parser));
+    let events = transform_line_breaks(remap_table_headers(wrap_code_block(parser)));
 
     let mut stack: Vec<Element> = vec![];
     let mut current: Option<Element> = Some(Element {
@@ -119,12 +147,37 @@ pub fn parse(markdown: String) -> Result<Option<Vec<Element>>> {
                 current = prev;
             }
             Event::Text(text) => {
-                if let Some(last) = borrow_text(&mut current) {
-                    last.push_str(&text);
-                } else {
-                    borrow_children(&mut current)
-                        .unwrap()
-                        .push(Element::text(text.to_string()));
+                let (leftover, segments) = parse_math(&text).unwrap();
+                if !leftover.is_empty() {
+                    panic!("unparsed: {}", leftover);
+                }
+                for segment in segments {
+                    if let (InlineElement::Plain(plain), Some(last)) =
+                        (&segment, borrow_text(&mut current))
+                    {
+                        last.push_str(plain);
+                    } else {
+                        let elm = match segment {
+                            InlineElement::Plain(text) => Element::text(text.to_owned()),
+                            InlineElement::MathText(text) => Element {
+                                tag: "math".to_owned(),
+                                attributes: Some(vec![Attribute::new(
+                                    "display".to_owned(),
+                                    "false".to_owned(),
+                                )]),
+                                children: Some(vec![Element::text(text.to_owned())]),
+                            },
+                            InlineElement::MathDisplay(text) => Element {
+                                tag: "math".to_owned(),
+                                attributes: Some(vec![Attribute::new(
+                                    "display".to_owned(),
+                                    "true".to_owned(),
+                                )]),
+                                children: Some(vec![Element::text(text.to_owned())]),
+                            },
+                        };
+                        borrow_children(&mut current).unwrap().push(elm);
+                    }
                 }
             }
             Event::Code(code) => borrow_children(&mut current).unwrap().push(Element {
@@ -143,24 +196,24 @@ pub fn parse(markdown: String) -> Result<Option<Vec<Element>>> {
                     children: None,
                 })
             }
-            Event::SoftBreak => {
-                if let Some(last) = borrow_text(&mut current) {
-                    last.push('\n');
-                } else {
-                    borrow_children(&mut current)
-                        .unwrap()
-                        .push(Element::text("\n".to_owned()));
-                }
-            }
-            Event::HardBreak => {
-                if let Some(last) = borrow_text(&mut current) {
-                    last.push_str("\n\n");
-                } else {
-                    borrow_children(&mut current)
-                        .unwrap()
-                        .push(Element::text("\n\n".to_owned()));
-                }
-            }
+            // Event::SoftBreak => {
+            // if let Some(last) = borrow_text(&mut current) {
+            // last.push('\n');
+            // } else {
+            // borrow_children(&mut current)
+            // .unwrap()
+            // .push(Element::text("\n".to_owned()));
+            // }
+            // }
+            // Event::HardBreak => {
+            // if let Some(last) = borrow_text(&mut current) {
+            // last.push_str("\n\n");
+            // } else {
+            // borrow_children(&mut current)
+            // .unwrap()
+            // .push(Element::text("\n\n".to_owned()));
+            // }
+            // }
             Event::Rule => borrow_children(&mut current).unwrap().push(Element {
                 tag: "hr".to_owned(),
                 attributes: Some(vec![]),
@@ -171,4 +224,22 @@ pub fn parse(markdown: String) -> Result<Option<Vec<Element>>> {
     }
 
     Ok(current.take().map(|x| x.children.unwrap_or_else(Vec::new)))
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::api::parse;
+
+    #[test]
+    fn test_stuff() {
+        // const SOURCE: &str = include_str!("../../markdown_reference.md");
+        const SOURCE: &str = "
+# sdfklj
+one $a$ $aa$ $aaa$
+$$
+asdasd
+$$";
+        let res = parse(SOURCE.to_owned()).unwrap();
+        dbg!(res);
+    }
 }

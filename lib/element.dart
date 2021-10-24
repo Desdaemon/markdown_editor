@@ -4,7 +4,7 @@ import 'package:markdown/markdown.dart' as md;
 class ElementAdapter extends md.Element {
   final Element elm;
   final _attributes = <String, String>{};
-  late List<md.Node> _children;
+  List<md.Node> _children = [];
   ElementAdapter(this.elm) : super.empty('') {
     if (elm.attributes != null) {
       for (final attr in elm.attributes!) {

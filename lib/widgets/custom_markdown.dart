@@ -48,7 +48,7 @@ class _CustomMarkdownWidgetState extends State<CustomMarkdownWidget> implements 
     _disposeRecognizers();
     final builder = MarkdownBuilder(
       delegate: this,
-      builders: const {},
+      builders: {'math': MathBuilder()},
       selectable: false,
       styleSheet: widget.styleSheet,
       listItemCrossAxisAlignment: MarkdownListItemCrossAxisAlignment.baseline,

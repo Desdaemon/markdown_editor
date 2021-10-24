@@ -4,14 +4,13 @@ version = "0.1.0"
 edition = "2018"
 
 [lib]
-crate-type = ["cdylib", "staticlib"]
+crate-type = ["cdylib"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 allo-isolate = "0.1.7"
 anyhow = "1.0.42"
-# flutter_rust_bridge = "1.0.3"
 flutter_rust_bridge = "1.2.0"
 nom = "7.0.0"
 pulldown-cmark = { version = "0.8.0", features = ["simd"], default-features = false }
