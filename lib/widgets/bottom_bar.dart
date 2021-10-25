@@ -6,6 +6,7 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:markdown_editor/providers.dart';
 import 'package:markdown_editor/screens/main.dart';
 
 class BottomBar extends StatelessWidget {
@@ -58,7 +59,7 @@ class BottomBar extends StatelessWidget {
                       tooltip: 'Stress Test',
                       onPressed: () async {
                         final file = await PlatformAssetBundle().loadString('packages/markdown_reference.md');
-                        ref.read(sourceProvider.notifier).state = file;
+                        ref.read(sourceProvider.notifier).setBuffer(file);
                         ref.read(editorTextControllerProvider)?.text = file;
                       },
                     );

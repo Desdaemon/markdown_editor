@@ -50,3 +50,5 @@ node_modules
 markdown_reference.*
 jniLibs
 libclang.so
+android/.settings/org.eclipse.buildship.core.prefs
+packages/reference_impl/android/.settings/org.eclipse.buildship.core.prefs
