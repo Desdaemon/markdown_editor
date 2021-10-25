@@ -21,7 +21,6 @@ class _MainState extends State<Main> {
   static final _isMobile = Platform.isAndroid || Platform.isIOS;
   Widget? _cache;
 
-  final GlobalKey<ScaffoldState> scaffoldKey = GlobalKey();
   final previewScrollController = ScrollController();
 
   @override
@@ -109,7 +108,7 @@ class _MainState extends State<Main> {
               children: children,
             ),
           ),
-        BottomBar(scaffoldKey: scaffoldKey),
+        const BottomBar(),
       ],
     );
   }
@@ -119,7 +118,6 @@ class _MainState extends State<Main> {
     return SafeArea(
       top: false,
       child: Scaffold(
-        key: scaffoldKey,
         body: LayoutBuilder(builder: buildPage),
       ),
     );

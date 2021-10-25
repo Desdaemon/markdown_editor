@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
@@ -7,11 +5,9 @@ import 'package:flutter/services.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:markdown_editor/providers.dart';
-import 'package:markdown_editor/screens/main.dart';
 
 class BottomBar extends StatelessWidget {
-  final GlobalKey<ScaffoldState>? scaffoldKey;
-  const BottomBar({this.scaffoldKey, Key? key}) : super(key: key);
+  const BottomBar({Key? key}) : super(key: key);
 
   static void noop() {}
 
@@ -26,11 +22,19 @@ class BottomBar extends StatelessWidget {
               scrollDirection: Axis.horizontal,
               child: Row(
                 children: [
-                  const IconButton(
-                    icon: AnimatedSwitcher(duration: Duration(milliseconds: 200), child: Icon(Icons.call_end)),
-                    onPressed: noop,
-                    tooltip: 'Stuff',
-                  ),
+                  Consumer(builder: (_, ref, __) {
+                    final state = ref.watch(themeModeProvider);
+                    return Tooltip(
+                      message: state.message,
+                      child: IconButton(
+                        icon: AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 200),
+                          child: Icon(state.icon),
+                        ),
+                        onPressed: ref.read(themeModeProvider.notifier).next,
+                      ),
+                    );
+                  }),
                   const IconButton(icon: Icon(Icons.format_bold), onPressed: noop, tooltip: 'Bold'),
                   const IconButton(icon: Icon(Icons.format_italic), onPressed: noop, tooltip: 'Italic'),
                   const IconButton(icon: Icon(Icons.format_strikethrough), onPressed: noop, tooltip: 'Strikethrough'),
@@ -86,7 +90,7 @@ class BottomBar extends StatelessWidget {
           ),
           IconButton(
             icon: const Icon(Icons.menu),
-            onPressed: scaffoldKey?.currentState?.openEndDrawer,
+            onPressed: Scaffold.of(context).openEndDrawer,
             tooltip: 'Menu',
           )
         ],

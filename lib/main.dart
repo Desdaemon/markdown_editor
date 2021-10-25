@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:markdown_editor/color_schemes.dart';
+import 'package:markdown_editor/providers.dart';
 import 'package:markdown_editor/screens/main.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -11,13 +13,15 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Flutter Demo',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-      ),
-      home: const Main(),
-    );
+    return Consumer(builder: (_, ref, __) {
+      return MaterialApp(
+        title: 'Flutter Demo',
+        debugShowCheckedModeBanner: false,
+        theme: ThemeData.from(colorScheme: ayuLight),
+        darkTheme: ThemeData.from(colorScheme: ayuDark),
+        themeMode: ref.watch(themeModeProvider).themeMode,
+        home: const Main(),
+      );
+    });
   }
 }

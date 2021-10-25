@@ -33,7 +33,9 @@ class _CustomMarkdownWidgetState extends State<CustomMarkdownWidget> implements 
   @override
   void didUpdateWidget(covariant CustomMarkdownWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.ast != oldWidget.ast || widget.controller != oldWidget.controller) {
+    if (widget.ast != oldWidget.ast ||
+        widget.controller != oldWidget.controller ||
+        widget.styleSheet != oldWidget.styleSheet) {
       _cache = _build();
     }
   }
@@ -48,7 +50,7 @@ class _CustomMarkdownWidgetState extends State<CustomMarkdownWidget> implements 
     _disposeRecognizers();
     final builder = MarkdownBuilder(
       delegate: this,
-      builders: {'math': MathBuilder()},
+      builders: {'math': MathBuilder(context: context)},
       selectable: false,
       styleSheet: widget.styleSheet,
       listItemCrossAxisAlignment: MarkdownListItemCrossAxisAlignment.baseline,
@@ -137,7 +139,11 @@ class _CustomMarkdownWidgetState extends State<CustomMarkdownWidget> implements 
 
 class MathBuilder extends MarkdownElementBuilder {
   final double fontScale;
-  MathBuilder({this.fontScale = 1});
+  final BuildContext context;
+  MathBuilder({
+    this.fontScale = 1,
+    required this.context,
+  });
 
   @override
   Widget? visitElementAfter(md.Element element, TextStyle? preferredStyle) {
@@ -147,6 +153,7 @@ class MathBuilder extends MarkdownElementBuilder {
       source: source,
       display: display,
       fontSize: 16 * fontScale,
+      textColor: Theme.of(context).textTheme.bodyText2?.color,
     );
   }
 }
