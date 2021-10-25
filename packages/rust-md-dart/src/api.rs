@@ -1,9 +1,7 @@
 use anyhow::Result;
-use pulldown_cmark::{CowStr, Event, Options, Parser, Tag};
-use rust_md::events::{remap_table_headers, wrap_code_block};
-use rust_md::markdown::{attrs_of, class_of, display_of};
-
-use crate::parser::{parse_math, InlineElement};
+use rust_md_core::events::{attrs_of, class_of, display_of, remap_table_headers, wrap_code_block};
+use rust_md_core::parser::{parse_math, InlineElement};
+use rust_md_core::pulldown_cmark::{CowStr, Event, Options, Parser, Tag};
 
 #[derive(Debug)]
 pub struct Element {
@@ -147,10 +145,7 @@ pub fn parse(markdown: String) -> Result<Option<Vec<Element>>> {
                 current = prev;
             }
             Event::Text(text) => {
-                let (leftover, segments) = parse_math(&text).unwrap();
-                if !leftover.is_empty() {
-                    panic!("unparsed: {}", leftover);
-                }
+                let (_, segments) = parse_math(&text).unwrap();
                 for segment in segments {
                     if let (InlineElement::Plain(plain), Some(last)) =
                         (&segment, borrow_text(&mut current))
@@ -196,24 +191,6 @@ pub fn parse(markdown: String) -> Result<Option<Vec<Element>>> {
                     children: None,
                 })
             }
-            // Event::SoftBreak => {
-            // if let Some(last) = borrow_text(&mut current) {
-            // last.push('\n');
-            // } else {
-            // borrow_children(&mut current)
-            // .unwrap()
-            // .push(Element::text("\n".to_owned()));
-            // }
-            // }
-            // Event::HardBreak => {
-            // if let Some(last) = borrow_text(&mut current) {
-            // last.push_str("\n\n");
-            // } else {
-            // borrow_children(&mut current)
-            // .unwrap()
-            // .push(Element::text("\n\n".to_owned()));
-            // }
-            // }
             Event::Rule => borrow_children(&mut current).unwrap().push(Element {
                 tag: "hr".to_owned(),
                 attributes: Some(vec![]),
@@ -224,22 +201,4 @@ pub fn parse(markdown: String) -> Result<Option<Vec<Element>>> {
     }
 
     Ok(current.take().map(|x| x.children.unwrap_or_else(Vec::new)))
-}
-
-#[cfg(test)]
-mod tests {
-    use crate::api::parse;
-
-    #[test]
-    fn test_stuff() {
-        // const SOURCE: &str = include_str!("../../markdown_reference.md");
-        const SOURCE: &str = "
-# sdfklj
-one $a$ $aa$ $aaa$
-$$
-asdasd
-$$";
-        let res = parse(SOURCE.to_owned()).unwrap();
-        dbg!(res);
-    }
 }

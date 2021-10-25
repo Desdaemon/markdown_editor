@@ -100,13 +100,11 @@ class App {
     const t0 = performance.now();
     if (source) {
       const { parse_vdom } = await import("rust-md");
-      // import("rust-md").then(({ parse_vdom }) => {
       const template = parse_vdom(source);
       template.sel = PREVIEW_SEL;
       template.data ??= {};
       renderKatex(template);
       this.responseTime = performance.now() - t0;
-      // });
     } else {
       updatePreview(h(PREVIEW_SEL, {}, []));
     }

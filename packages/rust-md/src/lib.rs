@@ -1,13 +1,12 @@
-pub mod events;
 mod log;
 pub mod markdown;
 pub mod utils;
 pub mod vnode;
 pub mod xml;
 
-use events::{remap_table_headers, wrap_code_block};
 use js_sys::Function;
-use markdown::{attrs_of, class_of, display_of, markdown_to_vdom};
+use markdown::markdown_to_vdom;
+use rust_md_core::events::{attrs_of, class_of, display_of, remap_table_headers, wrap_code_block};
 use serde_json::json;
 use wasm_bindgen::prelude::*;
 
@@ -17,7 +16,7 @@ use wasm_bindgen::prelude::*;
 #[global_allocator]
 static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
 
-use pulldown_cmark::{html::push_html, Event, Options, Parser};
+use rust_md_core::pulldown_cmark::{html::push_html, Event, Options, Parser};
 use serde::Deserialize;
 
 #[wasm_bindgen]
@@ -206,23 +205,5 @@ pub fn markdown_events(
             }
             _ => {}
         }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use crate::parse;
-
-    const SOURCE: &'static str = "
-one
-two \\
-three
-
-three";
-
-    #[test]
-    fn test_parse_vdom() {
-        let xml = parse(SOURCE, None);
-        dbg!(xml);
     }
 }
