@@ -13,6 +13,7 @@ class CustomMarkdownWidget extends StatefulWidget {
   final ScrollController? controller;
   final List<md.Node> ast;
   final MarkdownStyleSheet styleSheet;
+  final bool lazy;
   const CustomMarkdownWidget({
     required this.ast,
     required this.styleSheet,
@@ -20,6 +21,7 @@ class CustomMarkdownWidget extends StatefulWidget {
     this.padding,
     this.fontScale = 1,
     this.controller,
+    this.lazy = true,
   }) : super(key: key);
 
   @override
@@ -35,7 +37,8 @@ class _CustomMarkdownWidgetState extends State<CustomMarkdownWidget> implements 
     super.didUpdateWidget(oldWidget);
     if (widget.ast != oldWidget.ast ||
         widget.controller != oldWidget.controller ||
-        widget.styleSheet != oldWidget.styleSheet) {
+        widget.styleSheet != oldWidget.styleSheet ||
+        widget.lazy != oldWidget.lazy) {
       _cache = _build();
     }
   }
@@ -58,15 +61,23 @@ class _CustomMarkdownWidgetState extends State<CustomMarkdownWidget> implements 
       bulletBuilder: null,
       imageBuilder: null,
       checkboxBuilder: null,
+      paddingBuilders: const {},
     );
     final children = builder.build(widget.ast);
-    final thunkChildren = children.map((widget) => RepaintBoundary(child: ThunkWidget(child: widget))).toList();
+    final List<Widget> thunkChildren;
+    if (widget.lazy) {
+      thunkChildren = children.map(ThunkWidget.from).toList(growable: false);
+    } else {
+      thunkChildren = [
+        Column(
+            children:
+                children.map((child) => RepaintBoundary(child: ThunkWidget(child: child))).toList(growable: false))
+      ];
+    }
     return ListView(
       padding: widget.padding,
       controller: widget.controller,
-      children: [
-        Column(children: thunkChildren),
-      ],
+      children: thunkChildren,
     );
   }
 

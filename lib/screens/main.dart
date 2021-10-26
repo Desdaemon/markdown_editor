@@ -1,25 +1,29 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:markdown_editor/widgets/app_drawer.dart';
 import 'package:markdown_editor/widgets/bottom_bar.dart';
 import 'package:markdown_editor/widgets/custom_markdown.dart';
 import 'package:universal_io/io.dart';
 
+import '../formatters.dart';
 import '../providers.dart';
 
-class Main extends StatefulWidget {
+class Main extends ConsumerStatefulWidget {
   final String? initialValue;
   const Main({Key? key, this.initialValue}) : super(key: key);
 
   @override
-  State<StatefulWidget> createState() => _MainState();
+  ConsumerState<Main> createState() => _MainState();
 }
 
-class _MainState extends State<Main> {
+class _MainState extends ConsumerState<Main> {
   static final _isMobile = Platform.isAndroid || Platform.isIOS;
   Widget? _cache;
+  Timer? timer;
 
   final previewScrollController = ScrollController();
 
@@ -30,25 +34,44 @@ class _MainState extends State<Main> {
     previewScrollController.dispose();
   }
 
-  Timer? timer;
-
   Widget buildEditor(BuildContext bc, WidgetRef ref, Widget? _) {
     return NotificationListener<ScrollUpdateNotification>(
       onNotification: (noti) {
-        if (!previewScrollController.hasClients) return false;
-        final extent = previewScrollController.position.maxScrollExtent / noti.metrics.maxScrollExtent;
-        previewScrollController.jumpTo(noti.metrics.pixels * extent);
-        return true;
+        return ref.read(visibiiltyProvider).doSyncScroll ? onScrolNotification(noti) : false;
       },
-      child: TextField(
-        decoration: const InputDecoration.collapsed(hintText: null),
-        maxLines: null,
-        expands: true,
-        style: const TextStyle(fontFamily: 'JetBrains Mono'),
-        controller: ref.watch(editorTextControllerProvider),
-        onChanged: ref.read(sourceProvider.notifier).setBuffer,
+      child: FocusScope(
+        onKey: (node, event) {
+          if (event is! RawKeyUpEvent) return KeyEventResult.ignored;
+          if (event.physicalKey == PhysicalKeyboardKey.tab) {
+            ref.read(handlerProvider).tab();
+            return KeyEventResult.handled;
+          }
+          if (event.physicalKey == PhysicalKeyboardKey.keyL && event.isControlPressed) {
+            ref.read(handlerProvider).selectLine();
+            return KeyEventResult.handled;
+          }
+          return KeyEventResult.ignored;
+        },
+        child: TextField(
+          decoration: const InputDecoration.collapsed(hintText: null),
+          maxLines: null,
+          expands: true,
+          style: const TextStyle(fontFamily: 'JetBrains Mono'),
+          controller: ref.watch(editorTextControllerProvider),
+          onChanged: ref.read(sourceProvider.notifier).setBuffer,
+          inputFormatters: [
+            NewlineFormatter(),
+          ],
+        ),
       ),
     );
+  }
+
+  bool onScrolNotification(ScrollUpdateNotification noti) {
+    if (!previewScrollController.hasClients) return false;
+    final extent = previewScrollController.position.maxScrollExtent / noti.metrics.maxScrollExtent;
+    previewScrollController.jumpTo(noti.metrics.pixels * extent);
+    return true;
   }
 
   Widget buildPreview(BuildContext bc, WidgetRef ref, Widget? _) {
@@ -60,6 +83,7 @@ class _MainState extends State<Main> {
       ast: ast.asData!.value!,
       padding: EdgeInsets.zero,
       controller: previewScrollController,
+      lazy: !ref.watch(visibiiltyProvider).doSyncScroll,
       styleSheet: MarkdownStyleSheet.fromTheme(Theme.of(bc)).merge(MarkdownStyleSheet(
         textScaleFactor: 1,
         code: const TextStyle(
@@ -71,46 +95,52 @@ class _MainState extends State<Main> {
 
   Widget buildPage(BuildContext bc, BoxConstraints cons) {
     final vertical = cons.maxWidth <= 768;
-    final children = <Widget>[
-      Expanded(
-        child: Padding(
-          padding: vertical
-              ? const EdgeInsets.fromLTRB(16, 0, 16, 8)
-              : _isMobile
-                  ? const EdgeInsets.fromLTRB(16, 32, 8, 8)
-                  : const EdgeInsets.fromLTRB(16, 16, 8, 8),
-          child: Consumer(builder: buildEditor),
-        ),
-      ),
-      if (vertical) const Divider() else const VerticalDivider(),
-      Expanded(
-        child: Container(
-          alignment: Alignment.topLeft,
-          padding: vertical
-              ? _isMobile
-                  ? const EdgeInsets.fromLTRB(16, 32, 16, 0)
-                  : const EdgeInsets.fromLTRB(16, 16, 16, 8)
-              : _isMobile
-                  ? const EdgeInsets.fromLTRB(8, 32, 16, 8)
-                  : const EdgeInsets.fromLTRB(8, 16, 16, 8),
-          child: Consumer(builder: buildPreview),
-        ),
-      )
-    ];
-    return Column(
-      children: [
-        if (vertical)
-          ...children.reversed
-        else
+    return Consumer(builder: (bc, ref, _) {
+      final vis = ref.watch(visibiiltyProvider);
+      final children = <Widget>[
+        if (vis.editing)
           Expanded(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: children,
+            child: Padding(
+              padding: vertical
+                  ? const EdgeInsets.fromLTRB(16, 0, 16, 8)
+                  : _isMobile
+                      ? const EdgeInsets.fromLTRB(16, 32, 8, 8)
+                      : const EdgeInsets.fromLTRB(16, 16, 8, 8),
+              child: Consumer(builder: buildEditor),
             ),
           ),
-        const BottomBar(),
-      ],
-    );
+        if (vertical && vis.sideBySide) const Divider(),
+        if (!vertical && vis.sideBySide) const VerticalDivider(),
+        if (vis.previewing)
+          Expanded(
+            child: Container(
+              alignment: Alignment.topLeft,
+              padding: vertical
+                  ? _isMobile
+                      ? const EdgeInsets.fromLTRB(16, 32, 16, 0)
+                      : const EdgeInsets.fromLTRB(16, 16, 16, 8)
+                  : _isMobile
+                      ? const EdgeInsets.fromLTRB(8, 32, 16, 8)
+                      : const EdgeInsets.fromLTRB(8, 16, 16, 8),
+              child: Consumer(builder: buildPreview),
+            ),
+          )
+      ];
+      return Column(
+        children: [
+          if (vertical)
+            ...children.reversed
+          else
+            Expanded(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: children,
+              ),
+            ),
+          const BottomBar(),
+        ],
+      );
+    });
   }
 
   @override
@@ -118,6 +148,7 @@ class _MainState extends State<Main> {
     return SafeArea(
       top: false,
       child: Scaffold(
+        endDrawer: const AppDrawer(),
         body: LayoutBuilder(builder: buildPage),
       ),
     );
