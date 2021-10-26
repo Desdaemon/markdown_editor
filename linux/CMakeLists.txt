@@ -78,8 +78,10 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(Corrosion)
 
-corrosion_import_crate(MANIFEST_PATH ../packages/rust-md-dart/Cargo.toml)
-target_link_libraries(${BINARY_NAME} PUBLIC rust-md-dart)
+set(CRATE_NAME "rust-md-dart")
+corrosion_import_crate(MANIFEST_PATH ../packages/${CRATE_NAME}/Cargo.toml)
+target_link_libraries(${BINARY_NAME} PRIVATE ${CRATE_NAME})
+list(APPEND PLUGIN_BUNDLED_LIBRARIES $<TARGET_FILE:${CRATE_NAME}-shared>)
 
 # === Installation ===
 # By default, "installing" just makes a relocatable bundle in the build
@@ -112,7 +114,7 @@ if(PLUGIN_BUNDLED_LIBRARIES)
     COMPONENT Runtime)
 endif()
 
-install(FILES $<TARGET_FILE:rust-md-dart-shared> DESTINATION "${INSTALL_BUNDLE_LIB_DIR}" COMPONENT Runtime)
+# install(FILES $<TARGET_FILE:rust-md-dart-shared> DESTINATION "${INSTALL_BUNDLE_LIB_DIR}" COMPONENT Runtime)
 
 # Fully re-copy the assets directory on each build to avoid having stale files
 # from a previous install.

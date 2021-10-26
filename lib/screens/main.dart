@@ -26,12 +26,52 @@ class _MainState extends ConsumerState<Main> {
   Timer? timer;
 
   final previewScrollController = ScrollController();
+  final _node = FocusNode();
 
   @override
   void dispose() {
     super.dispose();
     timer?.cancel();
+    _node.dispose();
     previewScrollController.dispose();
+  }
+
+  KeyEventResult onKey(FocusNode node, RawKeyEvent event) {
+    if (event is! RawKeyUpEvent) return KeyEventResult.ignored;
+    if (event.physicalKey == PhysicalKeyboardKey.tab) {
+      ref.read(handlerProvider).tab();
+      return KeyEventResult.handled;
+    }
+    if (event.physicalKey == PhysicalKeyboardKey.keyL && event.isControlPressed) {
+      ref.read(handlerProvider).selectLine();
+      return KeyEventResult.handled;
+    }
+    if (event.physicalKey == PhysicalKeyboardKey.keyM && event.isControlPressed) {
+      final handler = ref.read(handlerProvider);
+      if (event.isShiftPressed) {
+        handler.mathEnvironment('aligned');
+      } else {
+        handler.wrap(left: r'$$');
+      }
+      return KeyEventResult.handled;
+    }
+    if (event.physicalKey == PhysicalKeyboardKey.keyB && event.isControlPressed) {
+      ref.read(handlerProvider).bold();
+      return KeyEventResult.handled;
+    }
+    if (event.physicalKey == PhysicalKeyboardKey.keyI && event.isControlPressed) {
+      ref.read(handlerProvider).italic();
+      return KeyEventResult.handled;
+    }
+    if (event.physicalKey == PhysicalKeyboardKey.keyS && event.isAltPressed) {
+      ref.read(handlerProvider).strikethrough();
+      return KeyEventResult.handled;
+    }
+    // if (event.physicalKey == PhysicalKeyboardKey.enter && event.isControlPressed) {
+    // ref.read(handlerProvider).newLine();
+    // return KeyEventResult.handled;
+    // }
+    return KeyEventResult.ignored;
   }
 
   Widget buildEditor(BuildContext bc, WidgetRef ref, Widget? _) {
@@ -40,24 +80,17 @@ class _MainState extends ConsumerState<Main> {
         return ref.read(visibiiltyProvider).doSyncScroll ? onScrolNotification(noti) : false;
       },
       child: FocusScope(
-        onKey: (node, event) {
-          if (event is! RawKeyUpEvent) return KeyEventResult.ignored;
-          if (event.physicalKey == PhysicalKeyboardKey.tab) {
-            ref.read(handlerProvider).tab();
-            return KeyEventResult.handled;
-          }
-          if (event.physicalKey == PhysicalKeyboardKey.keyL && event.isControlPressed) {
-            ref.read(handlerProvider).selectLine();
-            return KeyEventResult.handled;
-          }
-          return KeyEventResult.ignored;
-        },
+        onKey: onKey,
         child: TextField(
           decoration: const InputDecoration.collapsed(hintText: null),
           maxLines: null,
           expands: true,
-          style: const TextStyle(fontFamily: 'JetBrains Mono'),
+          style: TextStyle(
+            fontFamily: 'JetBrains Mono',
+            fontSize: ref.watch(fontSizeProvider),
+          ),
           controller: ref.watch(editorTextControllerProvider),
+          focusNode: _node,
           onChanged: ref.read(sourceProvider.notifier).setBuffer,
           inputFormatters: [
             NewlineFormatter(),
@@ -85,7 +118,7 @@ class _MainState extends ConsumerState<Main> {
       controller: previewScrollController,
       lazy: !ref.watch(visibiiltyProvider).doSyncScroll,
       styleSheet: MarkdownStyleSheet.fromTheme(Theme.of(bc)).merge(MarkdownStyleSheet(
-        textScaleFactor: 1,
+        textScaleFactor: ref.watch(fontSizeProvider) / FontSizeNotifier.baseSize,
         code: const TextStyle(
           fontFamily: 'JetBrains Mono',
         ),

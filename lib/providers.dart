@@ -16,20 +16,11 @@ final editorTextControllerProvider = Provider((ref) {
     return TextEditingController(text: data.value.getString('source') ?? '');
   }
 });
-// final editorFocusNode = Provider((_) => FocusNode());
 final handlerProvider = Provider((ref) => TextControllerHandler(ref));
 
 final sourceProvider = StateNotifierProvider<AppNotifier, AppModel>((ref) {
   final s = ref.watch(sharedPrefsProvider);
-  final data = s.asData;
-  if (data != null) {
-    return AppNotifier(
-      sharedPrefs: data.value,
-      buffer: data.value.getString('source') ?? '',
-    );
-  } else {
-    return AppNotifier();
-  }
+  return AppNotifier.fromPref(s.asData?.value);
 });
 
 final astProvider = FutureProvider((ref) async {
@@ -40,30 +31,17 @@ final astProvider = FutureProvider((ref) async {
 
 final themeModeProvider = StateNotifierProvider<ThemeNotifier, ThemeState>((ref) {
   final s = ref.watch(sharedPrefsProvider);
-  final data = s.asData;
-  if (data != null) {
-    final index = data.value.getInt('tm') ?? ThemeMode.system.index;
-    return ThemeNotifier(
-      pref: data.value,
-      theme: ThemeState.fromIndex(index),
-    );
-  } else {
-    return ThemeNotifier();
-  }
+  return ThemeNotifier.fromPref(s.asData?.value);
 });
 
 final visibiiltyProvider = StateNotifierProvider<VisibilityNotifier, VisibilityState>((ref) {
   final s = ref.watch(sharedPrefsProvider);
-  final data = s.asData;
-  if (data != null) {
-    final index = data.value.getInt('vis') ?? VisibilityStates.sbs.index;
-    return VisibilityNotifier(
-      pref: data.value,
-      visibility: VisibilityState.fromIndex(index),
-    );
-  } else {
-    return VisibilityNotifier();
-  }
+  return VisibilityNotifier.fromPref(s.asData?.value);
+});
+
+final fontSizeProvider = StateNotifierProvider<FontSizeNotifier, double>((ref) {
+  final s = ref.watch(sharedPrefsProvider);
+  return FontSizeNotifier.fromPref(s.asData?.value);
 });
 
 // ------------------------ class definitions -----------------------------------
@@ -92,8 +70,14 @@ class AppNotifier extends StateNotifier<AppModel> {
   Timer? timer;
   AppNotifier({
     this.sharedPrefs,
-    String buffer = '',
-  }) : super(AppModel(buffer: buffer, activeBuffers: [], currentBufferIndex: -1));
+    String? buffer,
+  }) : super(AppModel(buffer: buffer ?? '', activeBuffers: [], currentBufferIndex: -1));
+
+  factory AppNotifier.fromPref(SharedPreferences? pref) {
+    if (pref == null) return AppNotifier();
+    final buffer = pref.getString('source');
+    return AppNotifier(sharedPrefs: pref, buffer: buffer);
+  }
 
   void setBuffer(String buffer) {
     timer?.cancel();
@@ -165,8 +149,15 @@ class ThemeState {
 }
 
 class ThemeNotifier extends StateNotifier<ThemeState> {
+  static const persistKey = 'tm';
   final SharedPreferences? pref;
   ThemeNotifier({ThemeState? theme, this.pref}) : super(theme ?? ThemeState.system);
+
+  factory ThemeNotifier.fromPref(SharedPreferences? pref) {
+    if (pref == null) return ThemeNotifier();
+    final index = pref.getInt(persistKey) ?? ThemeState.system.themeMode.index;
+    return ThemeNotifier(theme: ThemeState.fromIndex(index), pref: pref);
+  }
 
   ThemeState next() {
     pref?.setInt('tm', state.next.themeMode.index);
@@ -241,12 +232,31 @@ class VisibilityState {
 }
 
 class VisibilityNotifier extends StateNotifier<VisibilityState> {
+  static const persistKey = 'vis';
   final SharedPreferences? pref;
   VisibilityNotifier({VisibilityState? visibility, this.pref}) : super(visibility ?? VisibilityState.sbs);
+
+  factory VisibilityNotifier.fromPref(SharedPreferences? pref) {
+    if (pref == null) return VisibilityNotifier();
+    final index = pref.getInt(persistKey) ?? VisibilityState.sbs.visibiilty.index;
+    return VisibilityNotifier(visibility: VisibilityState.fromIndex(index), pref: pref);
+  }
 
   VisibilityState next() {
     pref?.setInt('vis', state.next.visibiilty.index);
     return state = state.next;
+  }
+}
+
+class FontSizeNotifier extends StateNotifier<double> {
+  final SharedPreferences? pref;
+  static const baseSize = 14.0;
+  FontSizeNotifier({double? fontSize, this.pref}) : super(fontSize ?? baseSize);
+
+  factory FontSizeNotifier.fromPref(SharedPreferences? pref) {
+    if (pref == null) return FontSizeNotifier();
+    final data = pref.getDouble('fontsize');
+    return FontSizeNotifier(fontSize: data, pref: pref);
   }
 }
 
@@ -257,7 +267,10 @@ class TextControllerHandler {
   TextEditingController? get controller => ref.read(editorTextControllerProvider);
   AppNotifier get source => ref.read(sourceProvider.notifier);
 
-  void wrap({required String left, String? right}) {
+  void wrap({
+    required String left,
+    String? right,
+  }) {
     final ctl = controller;
     if (ctl == null) return;
     final _right = right ?? left;
@@ -300,11 +313,15 @@ class TextControllerHandler {
     source.immediatelySetBuffer(output);
   }
 
+  Line _currentLine(Text text, TextEditingController ctl) {
+    return text.line(text.locationAt(ctl.selection.start).line - 1);
+  }
+
   void selectLine() {
     final ctl = controller;
     if (ctl == null) return;
     final text = Text(ctl.text);
-    final line = text.line(text.locationAt(ctl.selection.start).line - 1);
+    final line = _currentLine(text, ctl);
     ctl.selection = TextSelection(
       baseOffset: line.start,
       extentOffset: line.end,
