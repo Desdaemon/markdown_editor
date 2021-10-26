@@ -69,17 +69,17 @@ set_target_properties(${BINARY_NAME}
 include(flutter/generated_plugins.cmake)
 
 # Running cargo build
-# include(FetchContent)
+include(FetchContent)
 
-# FetchContent_Declare(
-  # Corrosion
-  # GIT_REPOSITORY https://github.com/AndrewGaspar/corrosion.git
-  # GIT_TAG origin/master
-# )
-# FetchContent_MakeAvailable(Corrosion)
+FetchContent_Declare(
+  Corrosion
+  GIT_REPOSITORY https://github.com/AndrewGaspar/corrosion.git
+  GIT_TAG origin/master
+)
+FetchContent_MakeAvailable(Corrosion)
 
-# corrosion_import_crate(MANIFEST_PATH ../packages/rust-md-dart/Cargo.toml)
-# target_link_libraries(${BINARY_NAME} PUBLIC rust-md-dart)
+corrosion_import_crate(MANIFEST_PATH ../packages/rust-md-dart/Cargo.toml)
+target_link_libraries(${BINARY_NAME} PUBLIC rust-md-dart)
 
 # === Installation ===
 # By default, "installing" just makes a relocatable bundle in the build
@@ -111,6 +111,8 @@ if(PLUGIN_BUNDLED_LIBRARIES)
     DESTINATION "${INSTALL_BUNDLE_LIB_DIR}"
     COMPONENT Runtime)
 endif()
+
+install(FILES $<TARGET_FILE:rust-md-dart-shared> DESTINATION "${INSTALL_BUNDLE_LIB_DIR}" COMPONENT Runtime)
 
 # Fully re-copy the assets directory on each build to avoid having stale files
 # from a previous install.
