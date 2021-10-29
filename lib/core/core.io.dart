@@ -4,13 +4,13 @@ import 'package:universal_io/io.dart';
 
 import '../bridge_generated.dart';
 
-const base = 'librust_md_dart';
-final ext = Platform.isWindows
-    ? '.dll'
+const base = 'rust_md_dart';
+final path = Platform.isWindows
+    ? '$base.dll'
     : Platform.isMacOS
-        ? '.dylib'
-        : '.so';
-final dylib = DynamicLibrary.open('$base$ext');
+        ? 'lib$base.dylib'
+        : 'lib$base.so';
+final dylib = DynamicLibrary.open(path);
 final lib = RustMdDart(dylib);
 
 final parse = lib.parse;
