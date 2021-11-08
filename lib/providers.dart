@@ -73,8 +73,8 @@ class Buffer {
   String get title => value + (dirty ? ' •' : '');
 
   /// Writes to [path] the given contents if [path] is not null.
-  void writeFile(String contents) {
-    if (path != null) File(path!).writeAsStringSync(contents, flush: true);
+  Future<void> writeFile(String contents) async {
+    if (path != null) await File(path!).writeAsString(contents, flush: true);
   }
 }
 
@@ -170,15 +170,11 @@ class AppNotifier extends StateNotifier<AppModel> {
     persist(buffer: true, activeBuffers: true, currentBufferIndex: true);
   }
 
-  void persist({
+  Future<void> persist({
     bool buffer = false,
     bool activeBuffers = false,
     bool currentBufferIndex = false,
-  }) {
-    if (buffer) {
-      sharedPrefs?.setString(activeBuffer.value, state.buffer);
-      activeBuffer.writeFile(state.buffer);
-    }
+  }) async {
     if (activeBuffers) {
       sharedPrefs?.setStringList(
         _activeBufferKey,
@@ -187,6 +183,10 @@ class AppNotifier extends StateNotifier<AppModel> {
     }
     if (currentBufferIndex) {
       sharedPrefs?.setInt(_currentBufferIndexKey, state.currentBufferIndex);
+    }
+    if (buffer) {
+      sharedPrefs?.setString(activeBuffer.value, state.buffer);
+      await activeBuffer.writeFile(state.buffer);
     }
   }
 
@@ -271,16 +271,19 @@ class AppNotifier extends StateNotifier<AppModel> {
   }
 
   Future<void> open() async {
-    final result = await FilePicker.platform.pickFiles();
+    final result = await FilePicker.platform.pickFiles(
+      allowedExtensions: const ['md', 'txt'],
+      withReadStream: true,
+    );
     if (result == null) return;
     final file = result.files.single;
     final path = file.path;
-    assert((file.path != null) || (file.bytes != null), "Either path or bytes has to be present");
+    assert((file.path != null) || (file.readStream != null), "Either path or readStream has to be present");
     String contents;
     if (path == null) {
-      contents = const Utf8Decoder(allowMalformed: true).convert(file.bytes!.toList(growable: false));
+      contents = await file.readStream!.map(const Utf8Decoder().convert).single;
     } else {
-      contents = File(path).readAsStringSync();
+      contents = await File(path).readAsString();
     }
     newBuffer(bufferName: file.name, path: path, contents: contents);
   }
