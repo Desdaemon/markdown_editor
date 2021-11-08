@@ -50,6 +50,11 @@ add_subdirectory("runner")
 # them to the application.
 include(flutter/generated_plugins.cmake)
 
+find_package(Corrosion REQUIRED)
+set(CRATE_NAME "rust-md-dart")
+corrosion_import_crate(MANIFEST_PATH ../packages/${CRATE_NAME}/Cargo.toml)
+target_link_libraries(${BINARY_NAME} PRIVATE ${CRATE_NAME})
+list(APPEND PLUGIN_BUNDLED_LIBRARIES $<TARGET_FILE:${CRATE_NAME}-shared>)
 
 # === Installation ===
 # Support files are copied into place next to the executable, so that it can
