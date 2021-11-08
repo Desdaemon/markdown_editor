@@ -69,6 +69,22 @@ class AppDrawer extends ConsumerWidget {
                   ref.read(sourceProvider.notifier).newBuffer();
                 },
               ),
+              OutlinedButton.icon(
+                icon: const Icon(Icons.folder_open),
+                label: const Text('Open'),
+                onPressed: () {
+                  ref.read(sourceProvider.notifier).open();
+                },
+              ),
+            ]),
+          ),
+        ),
+        const SliverPadding(
+          padding: EdgeInsets.only(top: 8),
+          sliver: SliverList(
+            delegate: SliverChildListDelegate.fixed([
+              Center(child: Text('Buffers')),
+              Divider(),
             ]),
           ),
         ),
@@ -86,6 +102,12 @@ class AppDrawer extends ConsumerWidget {
                   onTap: () {
                     ref.read(sourceProvider.notifier).switchBuffer(idx);
                   },
+                  trailing: IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () {
+                      ref.read(sourceProvider.notifier).removeBuffer(idx);
+                    },
+                  ),
                 );
               },
               childCount: buffers.length,

@@ -1,16 +1,20 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:math';
 
 import 'package:flutter/services.dart';
 import 'package:flutter/material.dart' hide Text;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:text/text.dart';
+import 'package:universal_io/io.dart';
+import 'package:file_picker/file_picker.dart';
 
 import 'core/core.dart';
 import 'element.dart';
 
 final sharedPrefsProvider = FutureProvider((_) => SharedPreferences.getInstance());
+final initializedProvider = Provider((ref) => ref.watch(sharedPrefsProvider).asData != null);
 final handlerProvider = Provider((ref) => TextControllerHandler(ref));
 
 final sourceProvider = StateNotifierProvider<AppNotifier, AppModel>((ref) {
@@ -44,47 +48,55 @@ final fontSizeProvider = StateNotifierProvider<FontSizeNotifier, double>((ref) {
 class Buffer {
   final String value;
   final bool dirty;
-  const Buffer(this.value, {required this.dirty});
+  final String? path;
+  const Buffer(this.value, {required this.dirty, this.path});
 
-  Buffer copyWith({String? value, bool? dirty}) {
+  Buffer copyWith({String? value, bool? dirty, String? path}) {
     return Buffer(
       value ?? this.value,
       dirty: dirty ?? this.dirty,
+      path: path ?? this.path,
     );
   }
 
-  Map<String, dynamic> toJson() => {'value': value, 'dirty': dirty};
+  Map<String, dynamic> toJson() => {
+        'value': value,
+        'dirty': dirty,
+        'path': path,
+      };
   static Buffer fromJson(Map<String, dynamic> json) => Buffer(
         json['value'],
         dirty: json['dirty'] == 'true',
+        path: json['path'],
       );
 
-  String get title => value + (dirty ? ' ⋅' : '');
+  String get title => value + (dirty ? ' •' : '');
+
+  /// Writes to [path] the given contents if [path] is not null.
+  void writeFile(String contents) {
+    if (path != null) File(path!).writeAsStringSync(contents, flush: true);
+  }
 }
 
 class AppModel {
   final String buffer;
   final List<Buffer> activeBuffers;
   final int currentBufferIndex;
-  final bool dirty;
   const AppModel({
     required this.buffer,
     required this.activeBuffers,
     required this.currentBufferIndex,
-    required this.dirty,
   });
 
   AppModel copyWith({
     String? buffer,
     List<Buffer>? activeBuffers,
     int? currentBufferIndex,
-    bool? dirty,
   }) {
     return AppModel(
       activeBuffers: activeBuffers ?? this.activeBuffers,
       currentBufferIndex: currentBufferIndex ?? this.currentBufferIndex,
       buffer: buffer ?? this.buffer,
-      dirty: dirty ?? this.dirty,
     );
   }
 
@@ -94,6 +106,7 @@ class AppModel {
 class AppNotifier extends StateNotifier<AppModel> {
   static const _activeBufferKey = '__activeBuffers__';
   static const _currentBufferIndexKey = '__currentBufferIndex__';
+  static const _delay = Duration(milliseconds: 400);
   final SharedPreferences? sharedPrefs;
   final TextEditingController controller;
   Timer? timer;
@@ -107,7 +120,6 @@ class AppNotifier extends StateNotifier<AppModel> {
           buffer: buffer ?? '',
           activeBuffers: activeBuffers,
           currentBufferIndex: currentBufferIndex,
-          dirty: false,
         ));
 
   factory AppNotifier.fromPref(SharedPreferences? pref) {
@@ -135,66 +147,143 @@ class AppNotifier extends StateNotifier<AppModel> {
     return 'Untitled ($idx)';
   }
 
-  void newBuffer([String? bufferName]) {
+  /// Creates a new buffer with [bufferName].
+  void newBuffer({
+    String? bufferName,
+    String? contents,
+    String? path,
+  }) {
+    contents ??= '';
     state = state.copyWith(
-      buffer: '',
+      buffer: contents,
       currentBufferIndex: state.activeBuffers.length,
-      activeBuffers: [...state.activeBuffers, Buffer(bufferName ?? newBufferName, dirty: false)],
+      activeBuffers: [
+        ...state.activeBuffers,
+        Buffer(
+          bufferName ?? newBufferName,
+          dirty: false,
+          path: path,
+        )
+      ],
     );
-    controller.clear();
+    controller.text = contents;
+    persist(buffer: true, activeBuffers: true, currentBufferIndex: true);
   }
 
-  /// Waits for 400 ms before updating the buffer.
+  void persist({
+    bool buffer = false,
+    bool activeBuffers = false,
+    bool currentBufferIndex = false,
+  }) {
+    if (buffer) {
+      sharedPrefs?.setString(activeBuffer.value, state.buffer);
+      activeBuffer.writeFile(state.buffer);
+    }
+    if (activeBuffers) {
+      sharedPrefs?.setStringList(
+        _activeBufferKey,
+        state.activeBuffers.map((e) => jsonEncode(e.toJson())).toList(growable: false),
+      );
+    }
+    if (currentBufferIndex) {
+      sharedPrefs?.setInt(_currentBufferIndexKey, state.currentBufferIndex);
+    }
+  }
+
+  /// Waits for [_delay] before updating the buffer.
   void setBuffer(String buffer) {
     timer?.cancel();
-    timer = Timer(const Duration(milliseconds: 400), () {
+    timer = Timer(_delay, () {
       immediatelySetBuffer(buffer);
     });
   }
 
-  String get activeBufferKey => state.activeBuffers[state.currentBufferIndex].value;
+  Buffer get activeBuffer => state.activeBuffers[state.currentBufferIndex];
 
+  /// Sets the current buffer to [buffer] and mark it as dirty.
   void immediatelySetBuffer(String buffer) {
     int idx = 0;
     state = state.copyWith(
       buffer: buffer,
       activeBuffers: [
         for (final b in state.activeBuffers)
-          if (idx++ == state.currentBufferIndex) Buffer(b.value, dirty: true) else b
+          if (idx++ == state.currentBufferIndex) b.copyWith(dirty: true) else b
       ],
     );
   }
 
-  /// Sets the buffer *and* the controller's contents together.
+  /// Sets the buffer *and* the text controller's contents together.
   void syncControllerWithBuffer(String buffer) {
     controller.text = buffer;
     immediatelySetBuffer(buffer);
   }
 
+  /// Saves the current buffer.
   void save() {
-    sharedPrefs?.setString(activeBufferKey, state.buffer);
+    if (!activeBuffer.dirty) return;
     int idx = 0;
     state = state.copyWith(
       activeBuffers: [
         for (final b in state.activeBuffers)
-          if (idx++ == state.currentBufferIndex) Buffer(b.value, dirty: false) else b,
+          if (idx++ == state.currentBufferIndex) b.copyWith(dirty: false) else b
       ],
     );
-    sharedPrefs?.setStringList(
-      _activeBufferKey,
-      state.activeBuffers.map((e) => jsonEncode(e.toJson())).toList(growable: false),
-    );
+    persist(buffer: true, activeBuffers: true);
   }
 
   void switchBuffer(int index) {
     assert(0 <= index && index < state.activeBuffers.length, "Index should be in bounds");
+    save();
     controller.text = sharedPrefs?.getString(state.activeBuffers[index].value) ?? '';
     state = state.copyWith(currentBufferIndex: index, buffer: controller.text);
+    persist(currentBufferIndex: true);
   }
 
   void nextBuffer() => switchBuffer((state.currentBufferIndex + 1) % state.activeBuffers.length);
-  // This works because Dart's modulo is Euclidean modulo.
-  void previousBuffer() => switchBuffer((state.currentBufferIndex - 1) % state.activeBuffers.length);
+
+  /// Clears all buffers.
+  void clearBuffers() {
+    controller.clear();
+    state = state.copyWith(
+      buffer: '',
+      activeBuffers: [const Buffer('Untitled', dirty: false)],
+      currentBufferIndex: 0,
+    );
+    persist(buffer: true, activeBuffers: true, currentBufferIndex: true);
+  }
+
+  /// Removes the buffer at [index], or clear all buffers if there is only one buffer left.
+  void removeBuffer(int index) {
+    assert(0 <= index && index < state.activeBuffers.length, "Index should be in bounds");
+    if (state.activeBuffers.length == 1) return clearBuffers();
+    int newIndex = max(0, index - 1);
+    int idx = 0;
+    state = state.copyWith(
+      currentBufferIndex: newIndex,
+      activeBuffers: [
+        for (final b in state.activeBuffers)
+          if (idx++ != index) b
+      ],
+    );
+    controller.text = sharedPrefs?.getString(activeBuffer.value) ?? '';
+    state = state.copyWith(buffer: controller.text);
+    persist(activeBuffers: true, currentBufferIndex: true);
+  }
+
+  Future<void> open() async {
+    final result = await FilePicker.platform.pickFiles();
+    if (result == null) return;
+    final file = result.files.single;
+    final path = file.path;
+    assert((file.path != null) || (file.bytes != null), "Either path or bytes has to be present");
+    String contents;
+    if (path == null) {
+      contents = const Utf8Decoder(allowMalformed: true).convert(file.bytes!.toList(growable: false));
+    } else {
+      contents = File(path).readAsStringSync();
+    }
+    newBuffer(bufferName: file.name, path: path, contents: contents);
+  }
 }
 
 class ThemeState {
@@ -345,10 +434,10 @@ class TextControllerHandler {
   }) {
     final ctl = controller;
     if (ctl == null) return;
-    final _right = right ?? left;
+    right ??= left;
     final sel = ctl.selection;
     final text = ctl.text;
-    final output = [sel.textBefore(text), left, sel.textInside(text), _right, sel.textAfter(text)].join();
+    final output = [sel.textBefore(text), left, sel.textInside(text), right, sel.textAfter(text)].join();
     ctl.value = TextEditingValue(
       text: output,
       selection: sel.copyWith(

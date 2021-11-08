@@ -70,6 +70,14 @@ class _MainState extends ConsumerState<Main> {
   static final _handlers = <EventHandler>[
     EventHandler(
       key: PhysicalKeyboardKey.tab,
+      ctrl: true,
+      description: 'Next buffer',
+      onEvent: (ref, _) {
+        ref.read(sourceProvider.notifier).nextBuffer();
+      },
+    ),
+    EventHandler(
+      key: PhysicalKeyboardKey.tab,
       onEvent: (ref, _) {
         ref.read(handlerProvider).tab();
       },
@@ -139,7 +147,7 @@ class _MainState extends ConsumerState<Main> {
       onEvent: (ref, _) {
         ref.read(sourceProvider.notifier).save();
       },
-    )
+    ),
   ];
 
   KeyEventResult onKey(FocusNode node, RawKeyEvent event) {
@@ -164,6 +172,7 @@ class _MainState extends ConsumerState<Main> {
           decoration: const InputDecoration.collapsed(hintText: null),
           maxLines: null,
           expands: true,
+          enabled: ref.watch(initializedProvider),
           style: TextStyle(
             fontFamily: 'JetBrains Mono',
             fontSize: ref.watch(fontSizeProvider),
@@ -189,7 +198,7 @@ class _MainState extends ConsumerState<Main> {
   Widget buildPreview(BuildContext bc, WidgetRef ref, Widget? _) {
     final ast = ref.watch(astProvider);
     if (ast.asData?.value == null) {
-      return _cache ?? const SizedBox();
+      return _cache ?? const Center(child: CircularProgressIndicator());
     }
     return _cache = CustomMarkdownWidget(
       ast: ast.asData!.value!,
