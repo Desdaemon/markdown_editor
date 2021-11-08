@@ -298,6 +298,11 @@ class ThemeState {
 
   static const values = [
     ThemeState(
+      themeMode: ThemeMode.system,
+      message: 'Follow System',
+      icon: Icons.brightness_auto,
+    ),
+    ThemeState(
       themeMode: ThemeMode.light,
       message: 'Light Mode',
       icon: Icons.brightness_high,
@@ -307,14 +312,9 @@ class ThemeState {
       message: 'Dark Mode',
       icon: Icons.brightness_2,
     ),
-    ThemeState(
-      themeMode: ThemeMode.system,
-      message: 'Follow System',
-      icon: Icons.brightness_auto,
-    ),
   ];
 
-  static ThemeState get system => values[2];
+  static ThemeState get system => values[0];
 
   ThemeState get next => values[(themeMode.index + 1) % values.length];
 
@@ -333,7 +333,7 @@ class ThemeNotifier extends StateNotifier<ThemeState> {
   }
 
   ThemeState next() {
-    pref?.setInt('tm', state.next.themeMode.index);
+    pref?.setInt(persistKey, state.next.themeMode.index);
     return state = state.next;
   }
 }

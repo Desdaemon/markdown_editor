@@ -3,10 +3,6 @@ use rust_md_core::events::{attrs_of, class_of, display_of, remap_table_headers, 
 use rust_md_core::parser::{parse_math, InlineElement};
 use rust_md_core::pulldown_cmark::{CowStr, Event, Options, Parser, Tag};
 
-/**
- * Here's a bit of a longer comment,
- * also multiline just to see how you deal with this.
- */
 #[derive(Debug)]
 pub struct Element {
     /// Tags a la HTML tags.
