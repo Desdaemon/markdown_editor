@@ -20,6 +20,37 @@ class Main extends ConsumerStatefulWidget {
   ConsumerState<Main> createState() => _MainState();
 }
 
+class EventHandler {
+  final bool ctrl;
+  final bool alt;
+  final bool meta;
+  final bool shift;
+  final String? description;
+  final PhysicalKeyboardKey key;
+  final KeyEventResult? Function(WidgetRef ref, RawKeyEvent event) onEvent;
+
+  const EventHandler({
+    required this.key,
+    required this.onEvent,
+    this.ctrl = false,
+    this.alt = false,
+    this.meta = false,
+    this.shift = false,
+    this.description,
+  });
+
+  KeyEventResult? handle(RawKeyEvent event, WidgetRef ref) {
+    if (event.physicalKey == key &&
+        (!ctrl || event.isControlPressed) &&
+        (!alt || event.isAltPressed) &&
+        (!meta || event.isMetaPressed) &&
+        (!shift || event.isShiftPressed)) {
+      if (description != null) debugPrint(description);
+      return onEvent(ref, event);
+    }
+  }
+}
+
 class _MainState extends ConsumerState<Main> {
   static final _isMobile = Platform.isAndroid || Platform.isIOS;
   Widget? _cache;
@@ -36,41 +67,89 @@ class _MainState extends ConsumerState<Main> {
     previewScrollController.dispose();
   }
 
+  static final _handlers = <EventHandler>[
+    EventHandler(
+      key: PhysicalKeyboardKey.tab,
+      onEvent: (ref, _) {
+        ref.read(handlerProvider).tab();
+      },
+    ),
+    EventHandler(
+      key: PhysicalKeyboardKey.keyL,
+      ctrl: true,
+      description: 'Select line',
+      onEvent: (ref, _) {
+        ref.read(handlerProvider).selectLine();
+      },
+    ),
+    EventHandler(
+      key: PhysicalKeyboardKey.keyM,
+      ctrl: true,
+      shift: true,
+      description: 'Insert math environment',
+      onEvent: (ref, _) {
+        ref.read(handlerProvider).mathEnvironment('aligned');
+      },
+    ),
+    EventHandler(
+      key: PhysicalKeyboardKey.keyM,
+      ctrl: true,
+      shift: true,
+      description: 'Math block (display)',
+      onEvent: (ref, event) {
+        ref.read(handlerProvider).wrap(left: r'$$');
+      },
+    ),
+    EventHandler(
+      key: PhysicalKeyboardKey.keyM,
+      ctrl: true,
+      description: 'Math block (text)',
+      onEvent: (ref, event) {
+        ref.read(handlerProvider).mathText();
+      },
+    ),
+    EventHandler(
+      key: PhysicalKeyboardKey.keyB,
+      ctrl: true,
+      description: 'Bold',
+      onEvent: (ref, _) {
+        ref.read(handlerProvider).bold();
+      },
+    ),
+    EventHandler(
+      key: PhysicalKeyboardKey.keyI,
+      ctrl: true,
+      description: 'Italic',
+      onEvent: (ref, _) {
+        ref.read(handlerProvider).italic();
+      },
+    ),
+    EventHandler(
+      key: PhysicalKeyboardKey.keyS,
+      alt: true,
+      description: 'Bold',
+      onEvent: (ref, _) {
+        ref.read(handlerProvider).strikethrough();
+      },
+    ),
+    EventHandler(
+      key: PhysicalKeyboardKey.keyS,
+      ctrl: true,
+      description: 'Save',
+      onEvent: (ref, _) {
+        ref.read(sourceProvider.notifier).save();
+      },
+    )
+  ];
+
   KeyEventResult onKey(FocusNode node, RawKeyEvent event) {
     if (event is! RawKeyUpEvent) return KeyEventResult.ignored;
-    if (event.physicalKey == PhysicalKeyboardKey.tab) {
-      ref.read(handlerProvider).tab();
-      return KeyEventResult.handled;
-    }
-    if (event.physicalKey == PhysicalKeyboardKey.keyL && event.isControlPressed) {
-      ref.read(handlerProvider).selectLine();
-      return KeyEventResult.handled;
-    }
-    if (event.physicalKey == PhysicalKeyboardKey.keyM && event.isControlPressed) {
-      final handler = ref.read(handlerProvider);
-      if (event.isShiftPressed) {
-        handler.mathEnvironment('aligned');
-      } else {
-        handler.wrap(left: r'$$');
+    KeyEventResult? res;
+    for (final handler in _handlers) {
+      if ((res = handler.handle(event, ref)) != null) {
+        return res!;
       }
-      return KeyEventResult.handled;
     }
-    if (event.physicalKey == PhysicalKeyboardKey.keyB && event.isControlPressed) {
-      ref.read(handlerProvider).bold();
-      return KeyEventResult.handled;
-    }
-    if (event.physicalKey == PhysicalKeyboardKey.keyI && event.isControlPressed) {
-      ref.read(handlerProvider).italic();
-      return KeyEventResult.handled;
-    }
-    if (event.physicalKey == PhysicalKeyboardKey.keyS && event.isAltPressed) {
-      ref.read(handlerProvider).strikethrough();
-      return KeyEventResult.handled;
-    }
-    // if (event.physicalKey == PhysicalKeyboardKey.enter && event.isControlPressed) {
-    // ref.read(handlerProvider).newLine();
-    // return KeyEventResult.handled;
-    // }
     return KeyEventResult.ignored;
   }
 
@@ -89,7 +168,7 @@ class _MainState extends ConsumerState<Main> {
             fontFamily: 'JetBrains Mono',
             fontSize: ref.watch(fontSizeProvider),
           ),
-          controller: ref.watch(editorTextControllerProvider),
+          controller: ref.watch(sourceProvider.notifier).controller,
           focusNode: _node,
           onChanged: ref.read(sourceProvider.notifier).setBuffer,
           inputFormatters: [

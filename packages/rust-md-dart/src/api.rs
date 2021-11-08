@@ -3,11 +3,17 @@ use rust_md_core::events::{attrs_of, class_of, display_of, remap_table_headers, 
 use rust_md_core::parser::{parse_math, InlineElement};
 use rust_md_core::pulldown_cmark::{CowStr, Event, Options, Parser, Tag};
 
+/**
+ * Here's a bit of a longer comment,
+ * also multiline just to see how you deal with this.
+ */
 #[derive(Debug)]
 pub struct Element {
+    /// Tags a la HTML tags.
     pub tag: String,
+    /// Attributes.
     pub attributes: Option<Vec<Attribute>>,
-    /// Some comments here?
+    /// Children of this element.
     pub children: Option<Vec<Element>>,
 }
 
@@ -83,6 +89,7 @@ fn transform_line_breaks<'a>(
         .flatten()
 }
 
+/// Hello there, you made it this far.
 pub fn parse(markdown: String) -> Result<Option<Vec<Element>>> {
     let parser = Parser::new_ext(&markdown, Options::all());
     let events = transform_line_breaks(remap_table_headers(wrap_code_block(parser)));

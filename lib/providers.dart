@@ -1,5 +1,7 @@
 import 'dart:async';
+import 'dart:convert';
 
+import 'package:flutter/services.dart';
 import 'package:flutter/material.dart' hide Text;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -9,13 +11,6 @@ import 'core/core.dart';
 import 'element.dart';
 
 final sharedPrefsProvider = FutureProvider((_) => SharedPreferences.getInstance());
-final editorTextControllerProvider = Provider((ref) {
-  final s = ref.watch(sharedPrefsProvider);
-  final data = s.asData;
-  if (data != null) {
-    return TextEditingController(text: data.value.getString('source') ?? '');
-  }
-});
 final handlerProvider = Provider((ref) => TextControllerHandler(ref));
 
 final sourceProvider = StateNotifierProvider<AppNotifier, AppModel>((ref) {
@@ -46,39 +41,110 @@ final fontSizeProvider = StateNotifierProvider<FontSizeNotifier, double>((ref) {
 
 // ------------------------ class definitions -----------------------------------
 
+class Buffer {
+  final String value;
+  final bool dirty;
+  const Buffer(this.value, {required this.dirty});
+
+  Buffer copyWith({String? value, bool? dirty}) {
+    return Buffer(
+      value ?? this.value,
+      dirty: dirty ?? this.dirty,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {'value': value, 'dirty': dirty};
+  static Buffer fromJson(Map<String, dynamic> json) => Buffer(
+        json['value'],
+        dirty: json['dirty'] == 'true',
+      );
+
+  String get title => value + (dirty ? ' ⋅' : '');
+}
+
 class AppModel {
   final String buffer;
-  final List<String> activeBuffers;
+  final List<Buffer> activeBuffers;
   final int currentBufferIndex;
+  final bool dirty;
   const AppModel({
     required this.buffer,
     required this.activeBuffers,
     required this.currentBufferIndex,
+    required this.dirty,
   });
 
-  AppModel copyWith({String? buffer, List<String>? activeBuffers, int? currentBufferIndex}) {
+  AppModel copyWith({
+    String? buffer,
+    List<Buffer>? activeBuffers,
+    int? currentBufferIndex,
+    bool? dirty,
+  }) {
     return AppModel(
-      buffer: buffer ?? this.buffer,
       activeBuffers: activeBuffers ?? this.activeBuffers,
       currentBufferIndex: currentBufferIndex ?? this.currentBufferIndex,
+      buffer: buffer ?? this.buffer,
+      dirty: dirty ?? this.dirty,
     );
   }
+
+  List<String> bufferKeys() => activeBuffers.map((e) => e.value).toList(growable: false);
 }
 
 class AppNotifier extends StateNotifier<AppModel> {
+  static const _activeBufferKey = '__activeBuffers__';
+  static const _currentBufferIndexKey = '__currentBufferIndex__';
   final SharedPreferences? sharedPrefs;
+  final TextEditingController controller;
   Timer? timer;
   AppNotifier({
-    this.sharedPrefs,
+    required this.controller,
+    required List<Buffer> activeBuffers,
+    required int currentBufferIndex,
     String? buffer,
-  }) : super(AppModel(buffer: buffer ?? '', activeBuffers: [], currentBufferIndex: -1));
+    this.sharedPrefs,
+  }) : super(AppModel(
+          buffer: buffer ?? '',
+          activeBuffers: activeBuffers,
+          currentBufferIndex: currentBufferIndex,
+          dirty: false,
+        ));
 
   factory AppNotifier.fromPref(SharedPreferences? pref) {
-    if (pref == null) return AppNotifier();
-    final buffer = pref.getString('source');
-    return AppNotifier(sharedPrefs: pref, buffer: buffer);
+    final buffers =
+        pref?.getStringList(_activeBufferKey)?.map((source) => Buffer.fromJson(jsonDecode(source))).toList() ??
+            [const Buffer('source', dirty: false)];
+    final active = pref?.getInt(_currentBufferIndexKey) ?? 0;
+    final buffer = pref?.getString(buffers[active].value);
+    return AppNotifier(
+      buffer: buffer,
+      currentBufferIndex: active,
+      activeBuffers: buffers,
+      sharedPrefs: pref,
+      controller: TextEditingController(text: buffer),
+    );
   }
 
+  String get newBufferName {
+    final keys = state.bufferKeys();
+    if (!keys.contains('Untitled')) return 'Untitled';
+    int idx = 1;
+    while (keys.contains('Untitled ($idx)')) {
+      idx++;
+    }
+    return 'Untitled ($idx)';
+  }
+
+  void newBuffer([String? bufferName]) {
+    state = state.copyWith(
+      buffer: '',
+      currentBufferIndex: state.activeBuffers.length,
+      activeBuffers: [...state.activeBuffers, Buffer(bufferName ?? newBufferName, dirty: false)],
+    );
+    controller.clear();
+  }
+
+  /// Waits for 400 ms before updating the buffer.
   void setBuffer(String buffer) {
     timer?.cancel();
     timer = Timer(const Duration(milliseconds: 400), () {
@@ -86,15 +152,49 @@ class AppNotifier extends StateNotifier<AppModel> {
     });
   }
 
+  String get activeBufferKey => state.activeBuffers[state.currentBufferIndex].value;
+
   void immediatelySetBuffer(String buffer) {
-    state = state.copyWith(buffer: buffer);
+    int idx = 0;
+    state = state.copyWith(
+      buffer: buffer,
+      activeBuffers: [
+        for (final b in state.activeBuffers)
+          if (idx++ == state.currentBufferIndex) Buffer(b.value, dirty: true) else b
+      ],
+    );
+  }
+
+  /// Sets the buffer *and* the controller's contents together.
+  void syncControllerWithBuffer(String buffer) {
+    controller.text = buffer;
+    immediatelySetBuffer(buffer);
   }
 
   void save() {
-    if (state.currentBufferIndex != -1) {
-      sharedPrefs?.setString(state.activeBuffers[state.currentBufferIndex], state.buffer);
-    }
+    sharedPrefs?.setString(activeBufferKey, state.buffer);
+    int idx = 0;
+    state = state.copyWith(
+      activeBuffers: [
+        for (final b in state.activeBuffers)
+          if (idx++ == state.currentBufferIndex) Buffer(b.value, dirty: false) else b,
+      ],
+    );
+    sharedPrefs?.setStringList(
+      _activeBufferKey,
+      state.activeBuffers.map((e) => jsonEncode(e.toJson())).toList(growable: false),
+    );
   }
+
+  void switchBuffer(int index) {
+    assert(0 <= index && index < state.activeBuffers.length, "Index should be in bounds");
+    controller.text = sharedPrefs?.getString(state.activeBuffers[index].value) ?? '';
+    state = state.copyWith(currentBufferIndex: index, buffer: controller.text);
+  }
+
+  void nextBuffer() => switchBuffer((state.currentBufferIndex + 1) % state.activeBuffers.length);
+  // This works because Dart's modulo is Euclidean modulo.
+  void previousBuffer() => switchBuffer((state.currentBufferIndex - 1) % state.activeBuffers.length);
 }
 
 class ThemeState {
@@ -107,45 +207,29 @@ class ThemeState {
     required this.message,
   });
 
-  static const light = ThemeState(
-    themeMode: ThemeMode.light,
-    message: 'Light Mode',
-    icon: Icons.brightness_high,
-  );
+  static const values = [
+    ThemeState(
+      themeMode: ThemeMode.light,
+      message: 'Light Mode',
+      icon: Icons.brightness_high,
+    ),
+    ThemeState(
+      themeMode: ThemeMode.dark,
+      message: 'Dark Mode',
+      icon: Icons.brightness_2,
+    ),
+    ThemeState(
+      themeMode: ThemeMode.system,
+      message: 'Follow System',
+      icon: Icons.brightness_auto,
+    ),
+  ];
 
-  static const dark = ThemeState(
-    themeMode: ThemeMode.dark,
-    message: 'Dark Mode',
-    icon: Icons.brightness_2,
-  );
+  static ThemeState get system => values[2];
 
-  static const system = ThemeState(
-    themeMode: ThemeMode.system,
-    message: 'Follow System',
-    icon: Icons.brightness_auto,
-  );
+  ThemeState get next => values[(themeMode.index + 1) % values.length];
 
-  ThemeState get next {
-    switch (themeMode) {
-      case ThemeMode.light:
-        return dark;
-      case ThemeMode.dark:
-        return system;
-      case ThemeMode.system:
-        return light;
-    }
-  }
-
-  static ThemeState fromIndex(int index) {
-    switch (ThemeMode.values[index]) {
-      case ThemeMode.light:
-        return dark;
-      case ThemeMode.dark:
-        return system;
-      case ThemeMode.system:
-        return light;
-    }
-  }
+  static ThemeState fromIndex(int index) => values[index];
 }
 
 class ThemeNotifier extends StateNotifier<ThemeState> {
@@ -178,52 +262,34 @@ class VisibilityState {
     required this.message,
   });
 
-  static const editor = VisibilityState(
-    visibiilty: VisibilityStates.editor,
-    icon: Icons.edit,
-    message: 'Edit',
-  );
-  static const preview = VisibilityState(
-    visibiilty: VisibilityStates.preview,
-    icon: Icons.visibility,
-    message: 'Preview',
-  );
-  static const sbs = VisibilityState(
-    visibiilty: VisibilityStates.sbs,
-    icon: Icons.vertical_split,
-    message: 'Side-by-side',
-  );
-  static const sbsUnlocked = VisibilityState(
-    visibiilty: VisibilityStates.sbsUnlocked,
-    icon: Icons.lock_open,
-    message: 'Side-by-side (unlocked)',
-  );
+  static const values = [
+    VisibilityState(
+      visibiilty: VisibilityStates.editor,
+      icon: Icons.edit,
+      message: 'Edit',
+    ),
+    VisibilityState(
+      visibiilty: VisibilityStates.preview,
+      icon: Icons.visibility,
+      message: 'Preview',
+    ),
+    VisibilityState(
+      visibiilty: VisibilityStates.sbs,
+      icon: Icons.vertical_split,
+      message: 'Side-by-side',
+    ),
+    VisibilityState(
+      visibiilty: VisibilityStates.sbsUnlocked,
+      icon: Icons.lock_open,
+      message: 'Side-by-side (unlocked)',
+    ),
+  ];
 
-  VisibilityState get next {
-    switch (visibiilty) {
-      case VisibilityStates.sbs:
-        return sbsUnlocked;
-      case VisibilityStates.sbsUnlocked:
-        return editor;
-      case VisibilityStates.editor:
-        return preview;
-      case VisibilityStates.preview:
-        return sbs;
-    }
-  }
+  static VisibilityState get sbs => values[2];
 
-  factory VisibilityState.fromIndex(int index) {
-    switch (VisibilityStates.values[index]) {
-      case VisibilityStates.editor:
-        return editor;
-      case VisibilityStates.preview:
-        return preview;
-      case VisibilityStates.sbs:
-        return sbs;
-      case VisibilityStates.sbsUnlocked:
-        return sbsUnlocked;
-    }
-  }
+  VisibilityState get next => values[(visibiilty.index + 1) % values.length];
+
+  factory VisibilityState.fromIndex(int index) => values[index];
 
   bool get editing => visibiilty != VisibilityStates.preview;
   bool get previewing => visibiilty != VisibilityStates.editor;
@@ -232,7 +298,7 @@ class VisibilityState {
 }
 
 class VisibilityNotifier extends StateNotifier<VisibilityState> {
-  static const persistKey = 'vis';
+  static const persistKey = '__vis__';
   final SharedPreferences? pref;
   VisibilityNotifier({VisibilityState? visibility, this.pref}) : super(visibility ?? VisibilityState.sbs);
 
@@ -243,20 +309,26 @@ class VisibilityNotifier extends StateNotifier<VisibilityState> {
   }
 
   VisibilityState next() {
-    pref?.setInt('vis', state.next.visibiilty.index);
+    pref?.setInt(persistKey, state.next.visibiilty.index);
     return state = state.next;
   }
 }
 
 class FontSizeNotifier extends StateNotifier<double> {
+  static const persistKey = '__fontSize__';
   final SharedPreferences? pref;
   static const baseSize = 14.0;
   FontSizeNotifier({double? fontSize, this.pref}) : super(fontSize ?? baseSize);
 
   factory FontSizeNotifier.fromPref(SharedPreferences? pref) {
-    if (pref == null) return FontSizeNotifier();
-    final data = pref.getDouble('fontsize');
+    final data = pref?.getDouble(persistKey);
     return FontSizeNotifier(fontSize: data, pref: pref);
+  }
+
+  @override
+  set state(double _state) {
+    pref?.setDouble(persistKey, _state);
+    super.state = _state;
   }
 }
 
@@ -264,8 +336,8 @@ class TextControllerHandler {
   final ProviderRef<void> ref;
   const TextControllerHandler(this.ref);
 
-  TextEditingController? get controller => ref.read(editorTextControllerProvider);
   AppNotifier get source => ref.read(sourceProvider.notifier);
+  TextEditingController? get controller => source.controller;
 
   void wrap({
     required String left,

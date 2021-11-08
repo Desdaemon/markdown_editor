@@ -121,10 +121,10 @@ packages:
   flutter_rust_bridge:
     dependency: "direct main"
     description:
-      path: "../../flutter_rust_bridge/frb_dart"
-      relative: true
-    source: path
-    version: "1.2.0"
+      name: flutter_rust_bridge
+      url: "https://pub.dartlang.org"
+    source: hosted
+    version: "1.5.0"
   flutter_svg:
     dependency: transitive
     description:

@@ -36,8 +36,7 @@ dependencies:
   cupertino_icons: ^1.0.2
   universal_io: ^2.0.4
   # flutter_rust_bridge: ^1.0.3
-  flutter_rust_bridge:
-    path: ../../flutter_rust_bridge/frb_dart
+  flutter_rust_bridge: 1.5.0
   flutter_riverpod: ^1.0.0-dev.11
   flutter_markdown: ^0.6.7
   flutter_math_fork: ^0.4.2+1

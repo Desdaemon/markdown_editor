@@ -6,16 +6,6 @@ import 'package:flutter/material.dart';
 
 import '../providers.dart';
 
-// final customButtonStyle = ButtonStyle(
-// backgroundColor: MaterialStateProperty.all(const Color(0x5539bae6)),
-// side: MaterialStateProperty.all(
-// const BorderSide(
-// color: Color(0xff39bae6),
-// width: 2,
-// ),
-// ),
-// );
-
 class AppDrawer extends ConsumerWidget {
   const AppDrawer({Key? key}) : super(key: key);
 
@@ -60,8 +50,7 @@ class AppDrawer extends ConsumerWidget {
                 icon: const Icon(Icons.monitor_weight),
                 onPressed: () async {
                   final file = await PlatformAssetBundle().loadString('packages/markdown_reference.md');
-                  ref.read(sourceProvider.notifier).setBuffer(file);
-                  ref.read(editorTextControllerProvider)?.text = file;
+                  ref.read(sourceProvider.notifier).syncControllerWithBuffer(file);
                 },
                 label: const Text('Stress Test'),
               ),
@@ -72,10 +61,37 @@ class AppDrawer extends ConsumerWidget {
                     debugRepaintRainbowEnabled = !debugRepaintRainbowEnabled;
                   },
                   label: const Text('Repaint rainbows'),
-                )
+                ),
+              OutlinedButton.icon(
+                icon: const Icon(Icons.add),
+                label: const Text('New buffer'),
+                onPressed: () {
+                  ref.read(sourceProvider.notifier).newBuffer();
+                },
+              ),
             ]),
           ),
-        )
+        ),
+        Consumer(builder: (bc, ref, _) {
+          final prov = ref.watch(sourceProvider);
+          final buffers = prov.activeBuffers;
+          final activeIndex = prov.currentBufferIndex;
+          return SliverList(
+            delegate: SliverChildBuilderDelegate(
+              (bc, idx) {
+                final buffer = buffers[idx];
+                return ListTile(
+                  title: Text(buffer.title),
+                  selected: idx == activeIndex,
+                  onTap: () {
+                    ref.read(sourceProvider.notifier).switchBuffer(idx);
+                  },
+                );
+              },
+              childCount: buffers.length,
+            ),
+          );
+        }),
       ]),
     );
   }
