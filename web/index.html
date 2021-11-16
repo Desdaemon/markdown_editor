@@ -99,11 +99,9 @@
       }
     </script>
     <script type="module">
-      import init, { parse as _parse } from "./js/rust_md_dart.js";
+      import init, { parse as _parse } from "./rust_md_dart.js";
       window.parse = _parse;
-      (async function load() {
-        await init("./js/rust_md_dart_bg.wasm");
-      })();
+      init();
     </script>
   </body>
 </html>
