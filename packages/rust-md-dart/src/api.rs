@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use anyhow::Result;
 use rust_md_core::events::{attrs_of, class_of, display_of, remap_table_headers, wrap_code_block};
 use rust_md_core::parser::{parse_math, InlineElement};
@@ -68,7 +70,7 @@ fn transform_line_breaks<'a>(
         .map(|evt| match evt {
             Event::SoftBreak => Event::Text(CowStr::Borrowed(" ")),
             Event::HardBreak => Event::Text(CowStr::Borrowed("\n\n")),
-            evt => evt,
+            _ => evt,
         })
         .scan(None, |acc, evt| match (acc.as_mut(), evt) {
             (None, Event::Text(text)) => {
@@ -87,7 +89,30 @@ fn transform_line_breaks<'a>(
         .flatten()
 }
 
+fn replace_line_break_in_math(markdown: &str) -> String {
+    let cap = markdown.len() + 2 * count_line_breaks(markdown);
+    let (_, sections) = parse_math(markdown).unwrap();
+    sections
+        .into_iter()
+        .map(|x| match x {
+            InlineElement::MathText(x) => Cow::Owned(format!("${}$", x.replace(r"\\", r"\\\\"))),
+            InlineElement::MathDisplay(x) => {
+                Cow::Owned(format!("$${}$$", x.replace(r"\\", r"\\\\")))
+            }
+            InlineElement::Plain(x) => Cow::Borrowed(x),
+        })
+        .fold(String::with_capacity(cap), |mut acc, x| {
+            acc.push_str(&x);
+            acc
+        })
+}
+
+fn count_line_breaks(markdown: &str) -> usize {
+    markdown.matches("\\\\").count()
+}
+
 pub fn parse(markdown: String) -> Result<Option<Vec<Element>>> {
+    let markdown = replace_line_break_in_math(&markdown);
     let parser = Parser::new_ext(&markdown, Options::all());
     let events = transform_line_breaks(remap_table_headers(wrap_code_block(parser)));
 

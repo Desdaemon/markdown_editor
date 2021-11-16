@@ -22,6 +22,13 @@ final sourceProvider = StateNotifierProvider<AppNotifier, AppModel>((ref) {
   return AppNotifier.fromPref(s.asData?.value);
 });
 
+final dirtyProvider = Provider((ref) {
+  final source = ref.watch(sourceProvider);
+  final buffers = source.activeBuffers;
+  final index = source.currentBufferIndex;
+  return buffers[index].dirty;
+});
+
 final astProvider = FutureProvider((ref) async {
   final source = ref.watch(sourceProvider);
   final ast = await parse(markdown: source.buffer);

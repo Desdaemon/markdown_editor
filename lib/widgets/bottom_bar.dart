@@ -87,19 +87,17 @@ class BottomBar extends ConsumerWidget {
                   ),
                   // const IconButton(icon: Icon(Icons.format_indent_increase), onPressed: noop, tooltip: 'Indent'),
                   // const IconButton(icon: Icon(Icons.format_indent_decrease), onPressed: noop, tooltip: 'Dedent'),
-                  IconButton(
-                    icon: const Icon(Icons.save),
-                    tooltip: 'Save',
-                    onPressed: () {
-                      ref.read(sourceProvider.notifier).save();
-                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                        content: Text('Saved.'),
-                        behavior: SnackBarBehavior.floating,
-                        margin: EdgeInsets.fromLTRB(16, 0, 16, 48),
-                        backgroundColor: Colors.green,
-                      ));
-                    },
-                  ),
+                  Consumer(builder: (bc, ref, _) {
+                    return IconButton(
+                      icon: const Icon(Icons.save),
+                      tooltip: 'Save',
+                      onPressed: ref.watch(dirtyProvider)
+                          ? () {
+                              ref.read(sourceProvider.notifier).save();
+                            }
+                          : null,
+                    );
+                  })
                   // MouseRegion(
                   // cursor: SystemMouseCursors.click,
                   // child: GestureDetector(

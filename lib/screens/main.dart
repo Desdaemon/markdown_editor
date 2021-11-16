@@ -97,15 +97,7 @@ class _MainState extends ConsumerState<Main> {
       description: 'Insert math environment',
       onEvent: (ref, _) {
         ref.read(handlerProvider).mathEnvironment('aligned');
-      },
-    ),
-    EventHandler(
-      key: PhysicalKeyboardKey.keyM,
-      ctrl: true,
-      shift: true,
-      description: 'Math block (display)',
-      onEvent: (ref, event) {
-        ref.read(handlerProvider).wrap(left: r'$$');
+				return KeyEventResult.handled;
       },
     ),
     EventHandler(
