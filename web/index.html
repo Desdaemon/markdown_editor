@@ -36,6 +36,7 @@
     <script>
       var serviceWorkerVersion = null;
       var scriptLoaded = false;
+      window.parse = function () {};
       function loadMainDartJs() {
         if (scriptLoaded) {
           return;
@@ -98,7 +99,8 @@
       }
     </script>
     <script type="module">
-      import init from "./js/rust_md_dart.js";
+      import init, { parse as _parse } from "./js/rust_md_dart.js";
+      window.parse = _parse;
       (async function load() {
         await init("./js/rust_md_dart_bg.wasm");
       })();

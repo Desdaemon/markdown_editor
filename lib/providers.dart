@@ -14,7 +14,7 @@ import 'core/core.dart';
 import 'element.dart';
 
 final sharedPrefsProvider = FutureProvider((_) => SharedPreferences.getInstance());
-final initializedProvider = Provider((ref) => ref.watch(sharedPrefsProvider).asData != null);
+final initializedProvider = Provider<bool>((ref) => ref.watch(sharedPrefsProvider).asData != null);
 final handlerProvider = Provider((ref) => TextControllerHandler(ref));
 
 final sourceProvider = StateNotifierProvider<AppNotifier, AppModel>((ref) {
