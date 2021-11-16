@@ -8,45 +8,14 @@ import 'dart:typed_data';
 import 'package:flutter_rust_bridge/flutter_rust_bridge.dart';
 import 'dart:ffi' as ffi;
 
-abstract class RustMdDart extends FlutterRustBridgeBase<RustMdDartWire> {
+import 'package:markdown_editor/bridge_generated.types.dart';
+
+abstract class RustMdDart extends FlutterRustBridgeBase<RustMdDartWire> implements IRustMdDart {
   factory RustMdDart(ffi.DynamicLibrary dylib) => RustMdDartImpl.raw(RustMdDartWire(dylib));
 
   RustMdDart.raw(RustMdDartWire inner) : super(inner);
 
-  /// Hello there, you made it this far.
   Future<List<Element>?> parse({required String markdown, dynamic hint});
-}
-
-class Attribute {
-  final String key;
-
-  final String value;
-
-  Attribute({
-    required this.key,
-    required this.value,
-  });
-}
-
-///
-/// * Here's a bit of a longer comment,
-/// * also multiline just to see how you deal with this.
-///
-class Element {
-  /// Tags a la HTML tags.
-  final String tag;
-
-  /// Attributes.
-  final List<Attribute>? attributes;
-
-  /// Children of this element.
-  final List<Element>? children;
-
-  Element({
-    required this.tag,
-    this.attributes,
-    this.children,
-  });
 }
 
 // ------------------------- Implementation Details -------------------------

@@ -1,5 +1,6 @@
-import 'core/core.dart';
 import 'package:markdown/markdown.dart' as md;
+
+import 'bridge_generated.types.dart';
 
 class ElementAdapter extends md.Element {
   final Element elm;

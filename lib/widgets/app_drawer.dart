@@ -49,7 +49,7 @@ class AppDrawer extends ConsumerWidget {
               OutlinedButton.icon(
                 icon: const Icon(Icons.monitor_weight),
                 onPressed: () async {
-                  final file = await PlatformAssetBundle().loadString('packages/markdown_reference.md');
+                  final file = await PlatformAssetBundle().loadString('assets/markdown_reference.md');
                   ref.read(sourceProvider.notifier).syncControllerWithBuffer(file);
                 },
                 label: const Text('Stress Test'),

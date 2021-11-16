@@ -3,6 +3,7 @@ use rust_md_core::events::{attrs_of, class_of, display_of, remap_table_headers, 
 use rust_md_core::parser::{parse_math, InlineElement};
 use rust_md_core::pulldown_cmark::{CowStr, Event, Options, Parser, Tag};
 
+#[cfg_attr(target_arch = "wasm32", derive(serde::Serialize))]
 #[derive(Debug)]
 pub struct Element {
     /// Tags a la HTML tags.
@@ -23,6 +24,7 @@ impl Element {
     }
 }
 
+#[cfg_attr(target_arch = "wasm32", derive(serde::Serialize))]
 #[derive(Debug)]
 pub struct Attribute {
     pub key: String,
@@ -85,7 +87,6 @@ fn transform_line_breaks<'a>(
         .flatten()
 }
 
-/// Hello there, you made it this far.
 pub fn parse(markdown: String) -> Result<Option<Vec<Element>>> {
     let parser = Parser::new_ext(&markdown, Options::all());
     let events = transform_line_breaks(remap_table_headers(wrap_code_block(parser)));

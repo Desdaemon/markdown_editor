@@ -13,3 +13,5 @@ allo-isolate = "0.1.7"
 anyhow = "1.0.42"
 flutter_rust_bridge = "1.5.0"
 rust-md-core = { path = "../rust-md-core" }
+serde = { version = "1.0.130", features = ["derive"] }
+wasm-bindgen = { version = "0.2.78", features = ["serde-serialize"] }
