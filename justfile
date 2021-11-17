@@ -7,6 +7,5 @@ gen-bridge:
 
 build-web:
     cd packages/rust-md-dart && wasm-pack build -t web
-    dart run dart_js_lib_gen packages/rust-md-dart/pkg/*.d.ts -o lib/web_bindings -w
-    dart format --fix -l 120 lib/web_bindings/*.dart
+    dart_js_lib_gen packages/rust-md-dart/pkg/rust_md_dart.d.ts -o lib/web_bindings -w --no-imports --dynamic-undefs
 # vim:expandtab:tabstop=4:shiftwidth=4

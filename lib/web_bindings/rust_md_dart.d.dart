@@ -3,8 +3,6 @@ library packages.rust_md_dart.pkg.rust_md_dart.d.ts;
 
 // ignore_for_file: non_constant_identifier_names, private_optional_parameter, unused_element
 import 'package:js/js.dart';
-import "dart:html";
-import "lib.dom.d.dart";
 
 @JS(r'parse')
 external List<Element>? parse(String markdown);
@@ -54,3 +52,5 @@ class InitOutput {
     num Function(num a, num b, num c) __wbindgen_realloc,
   });
 }
+
+typedef Memory = dynamic;
