@@ -5,6 +5,20 @@ use rust_md_core::events::{attrs_of, class_of, display_of, remap_table_headers, 
 use rust_md_core::parser::{parse_math, InlineElement};
 use rust_md_core::pulldown_cmark::{CowStr, Event, Options, Parser, Tag};
 
+#[cfg(target_arch = "wasm32")]
+#[wasm_bindgen(typescript_custom_section)]
+const TS: &str = "
+interface Element {
+    tag: string
+    attributes?: Attribute[]
+    children?: Element[]
+}
+
+interface Attribute {
+    key: string
+    value: string
+}";
+
 #[cfg_attr(target_arch = "wasm32", derive(serde::Serialize))]
 #[derive(Debug)]
 pub struct Element {
@@ -16,6 +30,13 @@ pub struct Element {
     pub children: Option<Vec<Element>>,
 }
 
+#[cfg_attr(target_arch = "wasm32", derive(serde::Serialize))]
+#[derive(Debug)]
+pub struct Attribute {
+    pub key: String,
+    pub value: String,
+}
+
 impl Element {
     fn text(text: String) -> Self {
         Self {
@@ -24,13 +45,6 @@ impl Element {
             children: None,
         }
     }
-}
-
-#[cfg_attr(target_arch = "wasm32", derive(serde::Serialize))]
-#[derive(Debug)]
-pub struct Attribute {
-    pub key: String,
-    pub value: String,
 }
 
 impl Attribute {
