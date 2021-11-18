@@ -1,15 +1,15 @@
 use crate::{vnode::*, xml::xml_to_vdom};
-use rust_md_core::events::{attrs_of, class_of, display_of, remap_table_headers, wrap_code_block};
+use rust_md_core::events::{
+    attrs_of, class_of, display_of, remap_table_headers, transform_line_breaks, wrap_code_block,
+};
+use rust_md_core::parser::replace_line_break_in_math;
 use rust_md_core::pulldown_cmark::{Event, Options, Parser, Tag};
 use serde_json::json;
 
 fn borrow_last_text(opt: &mut Option<VNode>) -> Option<&mut String> {
     match opt {
-        Some(VNode {
-            children: Some(vec),
-            ..
-        }) => match vec.last_mut() {
-            Some(VNode { text, .. }) => text.as_mut(),
+        Some(node) => match node.children.last_mut() {
+            Some(node) => node.text.as_mut(),
             _ => None,
         },
         _ => None,
@@ -17,9 +17,9 @@ fn borrow_last_text(opt: &mut Option<VNode>) -> Option<&mut String> {
 }
 
 pub fn markdown_to_vdom(markdown: &str, options: Options) -> Option<VNode> {
-    let parser = Parser::new_ext(markdown, options);
-    let events = wrap_code_block(parser);
-    let events = remap_table_headers(events);
+    let markdown = replace_line_break_in_math(markdown);
+    let parser = Parser::new_ext(&markdown, options);
+    let events = transform_line_breaks(wrap_code_block(remap_table_headers(parser)));
     markdown_to_vdom_with(events)
 }
 
@@ -27,7 +27,7 @@ pub fn markdown_to_vdom_with<'a>(events: impl Iterator<Item = Event<'a>>) -> Opt
     let mut node_stack: Vec<VNode> = vec![];
     let mut current_node: Option<VNode> = Some(VNode {
         sel: Some("div".to_owned()),
-        children: Some(vec![]),
+        children: vec![],
         ..Default::default()
     });
     let mut memo = (vec![], 0);
@@ -48,16 +48,17 @@ pub fn markdown_to_vdom_with<'a>(events: impl Iterator<Item = Event<'a>>) -> Opt
                             .unwrap_or_else(|| name.to_owned()),
                     ),
                     data: Some(VNodeData { attrs }),
-                    children: Some(vec![]),
+                    children: vec![],
                     ..Default::default()
                 });
             }
             Event::End(tag) => {
                 if let Tag::Image(_, dest, _) = &tag {
                     let current_node = current_node.as_mut().unwrap();
-                    let children = current_node.children.take().unwrap();
-                    let alt = match children.last() {
-                        Some(last) => last.text.as_deref().unwrap_or(dest),
+                    let alt = match &current_node.children[..] {
+                        [.., VNode {
+                            text: Some(dest), ..
+                        }] => dest.as_str(),
                         _ => dest,
                     };
                     let attrs = Some(json! {{ "src": dest.to_string(), "alt": alt }});
@@ -88,7 +89,7 @@ pub fn markdown_to_vdom_with<'a>(events: impl Iterator<Item = Event<'a>>) -> Opt
                         data: Some(Default::default()),
                         // it's put in children to separate it from merging
                         // with other segments.
-                        children: Some(vec![VNode::text_node(text.to_string())]),
+                        children: vec![VNode::text_node(text.to_string())],
                         ..Default::default()
                     };
                     e.push(code_node);
@@ -132,7 +133,7 @@ pub fn markdown_to_vdom_with<'a>(events: impl Iterator<Item = Event<'a>>) -> Opt
                     .as_mut()
                     .unwrap()
                     .push_str(".task-list-item");
-                current_node.children.as_mut().unwrap().push(VNode {
+                current_node.children.push(VNode {
                     sel: Some("input.task-list-item-checkbox".to_owned()),
                     data: Some(VNodeData {
                         attrs: Some(json! ({

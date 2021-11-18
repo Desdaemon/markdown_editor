@@ -1,4 +1,17 @@
 use serde::{Deserialize, Serialize};
+use wasm_bindgen::prelude::*;
+
+#[wasm_bindgen(typescript_custom_section)]
+const TS: &str = "
+interface VNode {
+    sel?: string
+    data?: VNodeData
+    children: VNode[]
+    text?: string
+}
+interface VNodeData {
+    attrs?: Record<string, string>
+}";
 
 #[derive(PartialEq, Eq, Deserialize, Serialize, Default, Debug)]
 pub struct VNode {
@@ -7,8 +20,7 @@ pub struct VNode {
     pub sel: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub data: Option<VNodeData>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub children: Option<Vec<VNode>>,
+    pub children: Vec<VNode>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub text: Option<String>,
 }
@@ -45,8 +57,5 @@ pub struct VNodeData {
 
 #[inline]
 pub fn borrow_children(opt: &mut Option<VNode>) -> Option<&mut Vec<VNode>> {
-    match opt {
-        Some(VNode { children, .. }) => children.as_mut(),
-        _ => None,
-    }
+    opt.as_mut().map(|x| &mut x.children)
 }

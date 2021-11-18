@@ -2,7 +2,7 @@ const path = require("path");
 const { ContextReplacementPlugin } = require("webpack");
 const HtmlWebpackPlugin = require("html-webpack-plugin");
 const WasmPackPlugin = require("@wasm-tool/wasm-pack-plugin");
-const { BundleAnalyzerPlugin } = require("webpack-bundle-analyzer");
+// const { BundleAnalyzerPlugin } = require("webpack-bundle-analyzer");
 
 const swcOptions = {
   jsc: {
@@ -25,7 +25,6 @@ module.exports = {
   resolve: {
     extensions: ["", ".js", ".ts"],
   },
-  stats: "summary",
   plugins: [
     new HtmlWebpackPlugin({
       title: "Markdown Editor",
@@ -37,7 +36,7 @@ module.exports = {
       delete data.dependencies[0].critical;
       return data;
     }),
-    new BundleAnalyzerPlugin(),
+    // new BundleAnalyzerPlugin(),
   ],
   experiments: {
     asyncWebAssembly: true,

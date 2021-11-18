@@ -1,5 +1,6 @@
-use pulldown_cmark::{Alignment, CodeBlockKind, Event, Tag};
+use pulldown_cmark::{Alignment, CodeBlockKind, CowStr, Event, Tag};
 
+/// Transforms table cells into table headers where appropriate.
 pub fn remap_table_headers<'a>(
     events: impl Iterator<Item = Event<'a>>,
 ) -> impl Iterator<Item = Event<'a>> {
@@ -18,6 +19,7 @@ pub fn remap_table_headers<'a>(
     })
 }
 
+/// Transforms a text node in a code block to a `<pre>`.
 pub fn wrap_code_block<'a>(
     events: impl Iterator<Item = Event<'a>>,
 ) -> impl Iterator<Item = Event<'a>> {
@@ -35,6 +37,7 @@ pub fn wrap_code_block<'a>(
     })
 }
 
+/// The display value of this tag, e.g. h1, h2, p.
 pub fn display_of(tag: &Tag) -> &'static str {
     match tag {
         Tag::Paragraph => "p",
@@ -74,6 +77,10 @@ pub fn class_of(tag: &Tag) -> Option<String> {
 
 pub type AlignmentMemo = (Vec<Alignment>, usize);
 
+/// Extracts the attributes of these tags:
+/// - a (href)
+/// - th, td (align)
+/// - ul, ol (start)
 pub fn attrs_of(
     tag: Tag,
     (alignments, align_index): &mut AlignmentMemo,
@@ -108,4 +115,28 @@ fn alignment_of(alignment: &Alignment) -> Option<&'static str> {
         Alignment::Right => Some("right"),
         Alignment::Center => Some("center"),
     }
+}
+
+pub fn transform_line_breaks<'a>(
+    events: impl Iterator<Item = Event<'a>>,
+) -> impl Iterator<Item = Event<'a>> {
+    events
+        .map(|evt| match evt {
+            Event::SoftBreak => Event::Text(CowStr::Borrowed(" ")),
+            Event::HardBreak => Event::Text(CowStr::Borrowed("\n\n")),
+            _ => evt,
+        })
+        .scan(None, |acc, evt| match (acc.as_mut(), evt) {
+            (None, Event::Text(text)) => {
+                *acc = Some(text.to_string());
+                Some(vec![])
+            }
+            (Some(acc), Event::Text(text)) => {
+                acc.push_str(&text);
+                Some(vec![])
+            }
+            (Some(_), evt) => Some(vec![Event::Text(CowStr::from(acc.take().unwrap())), evt]),
+            (None, evt) => Some(vec![evt]),
+        })
+        .flatten()
 }

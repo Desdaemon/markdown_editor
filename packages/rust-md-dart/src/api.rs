@@ -1,9 +1,9 @@
-use std::borrow::Cow;
-
 use anyhow::Result;
-use rust_md_core::events::{attrs_of, class_of, display_of, remap_table_headers, wrap_code_block};
-use rust_md_core::parser::{parse_math, InlineElement};
-use rust_md_core::pulldown_cmark::{CowStr, Event, Options, Parser, Tag};
+use rust_md_core::events::{
+    attrs_of, class_of, display_of, remap_table_headers, transform_line_breaks, wrap_code_block,
+};
+use rust_md_core::parser::{parse_math, replace_line_break_in_math, InlineElement};
+use rust_md_core::pulldown_cmark::{Event, Options, Parser, Tag};
 
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;
@@ -78,54 +78,6 @@ fn borrow_text(this: &mut Option<Element>) -> Option<&mut String> {
         },
         _ => None,
     }
-}
-
-fn transform_line_breaks<'a>(
-    events: impl Iterator<Item = Event<'a>>,
-) -> impl Iterator<Item = Event<'a>> {
-    events
-        .map(|evt| match evt {
-            Event::SoftBreak => Event::Text(CowStr::Borrowed(" ")),
-            Event::HardBreak => Event::Text(CowStr::Borrowed("\n\n")),
-            _ => evt,
-        })
-        .scan(None, |acc, evt| match (acc.as_mut(), evt) {
-            (None, Event::Text(text)) => {
-                *acc = Some(text.to_string());
-                // Returning a None here would short-circuit the iterator,
-                // so we yield an empty list instead.
-                Some(vec![])
-            }
-            (Some(acc), Event::Text(text)) => {
-                acc.push_str(&text);
-                Some(vec![])
-            }
-            (Some(_), evt) => Some(vec![Event::Text(CowStr::from(acc.take().unwrap())), evt]),
-            (None, evt) => Some(vec![evt]),
-        })
-        .flatten()
-}
-
-fn replace_line_break_in_math(markdown: &str) -> String {
-    let cap = markdown.len() + 2 * count_line_breaks(markdown);
-    let (_, sections) = parse_math(markdown).unwrap();
-    sections
-        .into_iter()
-        .map(|x| match x {
-            InlineElement::MathText(x) => Cow::Owned(format!("${}$", x.replace(r"\\", r"\\\\"))),
-            InlineElement::MathDisplay(x) => {
-                Cow::Owned(format!("$${}$$", x.replace(r"\\", r"\\\\")))
-            }
-            InlineElement::Plain(x) => Cow::Borrowed(x),
-        })
-        .fold(String::with_capacity(cap), |mut acc, x| {
-            acc.push_str(&x);
-            acc
-        })
-}
-
-fn count_line_breaks(markdown: &str) -> usize {
-    markdown.matches("\\\\").count()
 }
 
 pub fn parse(markdown: String) -> Result<Option<Vec<Element>>> {

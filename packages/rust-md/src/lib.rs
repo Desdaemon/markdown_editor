@@ -35,13 +35,13 @@ struct MarkdownOptions {
 }
 
 #[wasm_bindgen(typescript_custom_section)]
-const TYPESCRIPT: &'static str = "
+const TS: &'static str = "
 export function markdown_events(
     markdown: string,
-    options: MarkdownOptions | undefined,
+    options?: MarkdownOptions,
     callback: (tag: string, config: any) => void
 ): void
-export interface MarkdownOptions {
+interface MarkdownOptions {
     tables?: boolean
     footnotes?: boolean
     tasklist?: boolean
@@ -53,6 +53,9 @@ export interface MarkdownOptions {
 extern "C" {
     #[wasm_bindgen(typescript_type = "MarkdownOptions")]
     pub type IMarkdownOptions;
+
+    #[wasm_bindgen(typescript_type = "VNode | null")]
+    pub type OptionalVNode;
 }
 
 impl Default for MarkdownOptions {
@@ -117,18 +120,18 @@ pub fn parse(markdown: &str, options: Option<IMarkdownOptions>) -> String {
 }
 
 #[wasm_bindgen]
-pub fn parse_vdom(markdown: &str, options: Option<IMarkdownOptions>) -> JsValue {
+pub fn parse_vdom(markdown: &str, options: Option<IMarkdownOptions>) -> OptionalVNode {
     let opts = resolve_options(options);
     let vnode = markdown_to_vdom(markdown, opts);
 
     #[cfg(not(feature = "serde-wasm-bindgen"))]
-    return JsValue::from_serde(&vnode).unwrap();
+    return JsValue::from_serde(&vnode).unwrap().into();
 
     #[cfg(feature = "serde-wasm-bindgen")]
-    return serde_wasm_bindgen::to_value(&vnode).unwrap();
+    return serde_wasm_bindgen::to_value(&vnode).unwrap().into();
 }
 
-#[wasm_bindgen]
+#[wasm_bindgen(skip_typescript)]
 pub fn markdown_events(
     markdown: &str,
     options: Option<IMarkdownOptions>,

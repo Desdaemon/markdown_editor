@@ -52,7 +52,7 @@ pub fn xml_to_vdom(xml: &str) -> Option<VNode> {
                     data: Some(VNodeData {
                         attrs: Some(serde_json::to_value(attrs).unwrap()),
                     }),
-                    children: Some(vec![]),
+                    children: vec![],
                     ..Default::default()
                 });
             }
