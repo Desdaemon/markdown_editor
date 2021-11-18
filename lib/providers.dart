@@ -2,6 +2,9 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/material.dart' hide Text;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -13,13 +16,23 @@ import 'package:file_picker/file_picker.dart';
 import 'core/core.dart';
 import 'element.dart';
 
+final firebaseProvider = FutureProvider((_) => Firebase.initializeApp());
 final sharedPrefsProvider = FutureProvider((_) => SharedPreferences.getInstance());
 final initializedProvider = Provider<bool>((ref) => ref.watch(sharedPrefsProvider).asData != null);
 final handlerProvider = Provider((ref) => TextControllerHandler(ref));
+final userProvider = StreamProvider((_) => FirebaseAuth.instance.userChanges());
+final buffersCollection = FirebaseFirestore.instance.collection('buffers');
+final buffersProvider = FutureProvider((ref) async {
+  final user = ref.watch(userProvider).asData?.value;
+  if (user != null) {
+    final snap = await buffersCollection.where('uid', isEqualTo: user.uid).get();
+    return Buffer.fromQuerySnapshot(snap);
+  }
+});
 
 final sourceProvider = StateNotifierProvider<AppNotifier, AppModel>((ref) {
   final s = ref.watch(sharedPrefsProvider);
-  return AppNotifier.fromPref(s.asData?.value);
+  return AppNotifier.fromPref(s.asData?.value, ref);
 });
 
 final dirtyProvider = Provider((ref) {
@@ -53,10 +66,11 @@ final fontSizeProvider = StateNotifierProvider<FontSizeNotifier, double>((ref) {
 // ------------------------ class definitions -----------------------------------
 
 class Buffer {
+  final String? id;
   final String value;
   final bool dirty;
   final String? path;
-  const Buffer(this.value, {required this.dirty, this.path});
+  const Buffer(this.value, {required this.dirty, this.path, this.id});
 
   Buffer copyWith({String? value, bool? dirty, String? path}) {
     return Buffer(
@@ -68,12 +82,13 @@ class Buffer {
 
   Map<String, dynamic> toJson() => {
         'value': value,
-        'dirty': dirty,
         'path': path,
       };
+
   static Buffer fromJson(Map<String, dynamic> json) => Buffer(
         json['value'],
-        dirty: json['dirty'] == 'true',
+        id: json['id'],
+        dirty: false,
         path: json['path'],
       );
 
@@ -83,6 +98,9 @@ class Buffer {
   Future<void> writeFile(String contents) async {
     if (path != null) await File(path!).writeAsString(contents, flush: true);
   }
+
+  static List<Buffer> fromQuerySnapshot(QuerySnapshot<Map<String, dynamic>> snap) =>
+      snap.docs.map((doc) => Buffer.fromJson(doc.data())).toList(growable: false);
 }
 
 class AppModel {
@@ -129,10 +147,10 @@ class AppNotifier extends StateNotifier<AppModel> {
           currentBufferIndex: currentBufferIndex,
         ));
 
-  factory AppNotifier.fromPref(SharedPreferences? pref) {
-    final buffers =
+  factory AppNotifier.fromPref(SharedPreferences? pref, ProviderRefBase ref) {
+    final buffers = ref.read(buffersProvider).asData?.value ??
         pref?.getStringList(_activeBufferKey)?.map((source) => Buffer.fromJson(jsonDecode(source))).toList() ??
-            [const Buffer('source', dirty: false)];
+        [const Buffer('source', dirty: false)];
     final active = pref?.getInt(_currentBufferIndexKey) ?? 0;
     final buffer = pref?.getString(buffers[active].value);
     return AppNotifier(

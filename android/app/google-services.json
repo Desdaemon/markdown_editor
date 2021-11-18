@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "569724758902",
+    "project_id": "markdown-editor-fd781",
+    "storage_bucket": "markdown-editor-fd781.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:569724758902:android:ccbe6b4baf038c922d2857",
+        "android_client_info": {
+          "package_name": "com.example.markdown_editor"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "569724758902-oa9a02n7jdb54r540r81muvif9qao5bm.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDiiDTostvhsb2KVjb2T_ZnlZdna0bjsCY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "569724758902-oa9a02n7jdb54r540r81muvif9qao5bm.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

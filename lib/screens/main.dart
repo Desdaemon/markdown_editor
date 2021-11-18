@@ -97,7 +97,7 @@ class _MainState extends ConsumerState<Main> {
       description: 'Insert math environment',
       onEvent: (ref, _) {
         ref.read(handlerProvider).mathEnvironment('aligned');
-				return KeyEventResult.handled;
+        return KeyEventResult.handled;
       },
     ),
     EventHandler(
@@ -138,6 +138,7 @@ class _MainState extends ConsumerState<Main> {
       description: 'Save',
       onEvent: (ref, _) {
         ref.read(sourceProvider.notifier).save();
+        return KeyEventResult.handled;
       },
     ),
   ];
