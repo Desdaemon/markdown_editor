@@ -1,5 +1,5 @@
 import { toVNode, VNode, thunk } from "snabbdom";
-import katex from 'katex'
+import katex from "katex";
 
 export function Katex(source: string, displayMode = false) {
   const span = document.createElement("span");
@@ -65,3 +65,4 @@ const KATEX_IGNORE = [
   "code",
   "option",
 ];
+
