@@ -6,6 +6,9 @@ use rust_md_core::parser::{parse_math, InlineElement};
 use rust_md_core::pulldown_cmark::{CowStr, Event, Options, Parser, Tag};
 
 #[cfg(target_arch = "wasm32")]
+use wasm_bindgen::prelude::*;
+
+#[cfg(target_arch = "wasm32")]
 #[wasm_bindgen(typescript_custom_section)]
 const TS: &str = "
 interface Element {

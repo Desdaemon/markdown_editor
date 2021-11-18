@@ -1,11 +1,14 @@
-alias g := gen-bridge
+web_crate := "packages/rust-md-dart"
+
 # Emits bindings for FFI and WASM.
-gen-bridge:
+bridge:
     flutter_rust_bridge_codegen -r packages/rust-md-dart/src/api.rs \
                                 -d lib/bridge_generated.dart
     dart format --fix -l 120 lib/bridge_generated.dart
 
-build-web:
-    cd packages/rust-md-dart && wasm-pack build -t web
-    dart_js_lib_gen packages/rust-md-dart/pkg/rust_md_dart.d.ts -o lib/web_bindings -w --no-imports --dynamic-undefs
+web:
+    cd {{web_crate}} && wasm-pack build -t web
+    cp {{web_crate}}/pkg/*.js {{web_crate}}/pkg/*.wasm web/
+    dart_js_lib_gen {{web_crate}}/pkg/rust_md_dart.d.ts -o lib/web_bindings -w --no-imports --dynamic-undefs
+
 # vim:expandtab:tabstop=4:shiftwidth=4

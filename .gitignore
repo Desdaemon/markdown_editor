@@ -52,3 +52,6 @@ jniLibs
 libclang.so
 android/.settings/org.eclipse.buildship.core.prefs
 packages/reference_impl/android/.settings/org.eclipse.buildship.core.prefs
+
+/web/*.js
+/web/*.wasm
