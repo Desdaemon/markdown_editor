@@ -1,8 +1,10 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/material.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 
 import '../providers.dart';
 
@@ -47,6 +49,50 @@ class AppDrawer extends ConsumerWidget {
                 );
               }),
               OutlinedButton.icon(
+                icon: const Icon(Icons.add),
+                label: const Text('New buffer'),
+                onPressed: () {
+                  ref.read(sourceProvider.notifier).newBuffer();
+                },
+              ),
+              OutlinedButton.icon(
+                icon: const Icon(Icons.folder_open),
+                label: const Text('Open'),
+                onPressed: () {
+                  ref.read(sourceProvider.notifier).open();
+                },
+              ),
+              Consumer(
+                builder: (bc, ref, child) {
+                  if (ref.watch(uidProvider) != null) {
+                    return child!;
+                  }
+                  return OutlinedButton.icon(
+                    icon: const Icon(Icons.login),
+                    onPressed: () async {
+                      if (kIsWeb) {
+                        final prov = GoogleAuthProvider();
+                        await FirebaseAuth.instance.signInWithPopup(prov);
+                      } else {
+                        final user = await GoogleSignIn().signIn();
+                        final auth = await user?.authentication;
+                        final cred =
+                            GoogleAuthProvider.credential(accessToken: auth?.accessToken, idToken: auth?.idToken);
+                        await FirebaseAuth.instance.signInWithCredential(cred);
+                      }
+                    },
+                    label: const Text('Login with Google'),
+                  );
+                },
+                child: OutlinedButton.icon(
+                  icon: const Icon(Icons.logout),
+                  label: const Text('Logout'),
+                  onPressed: () {
+                    FirebaseAuth.instance.signOut();
+                  },
+                ),
+              ),
+              OutlinedButton.icon(
                 icon: const Icon(Icons.monitor_weight),
                 onPressed: () async {
                   final file = await PlatformAssetBundle().loadString('assets/markdown_reference.md');
@@ -62,20 +108,6 @@ class AppDrawer extends ConsumerWidget {
                   },
                   label: const Text('Repaint rainbows'),
                 ),
-              OutlinedButton.icon(
-                icon: const Icon(Icons.add),
-                label: const Text('New buffer'),
-                onPressed: () {
-                  ref.read(sourceProvider.notifier).newBuffer();
-                },
-              ),
-              OutlinedButton.icon(
-                icon: const Icon(Icons.folder_open),
-                label: const Text('Open'),
-                onPressed: () {
-                  ref.read(sourceProvider.notifier).open();
-                },
-              ),
             ]),
           ),
         ),
