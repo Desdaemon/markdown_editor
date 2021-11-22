@@ -4,6 +4,7 @@ import 'package:flutter/rendering.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:markdown_editor/providers.dart';
+import 'package:markdown_editor/screens/draw.dart';
 
 const environments = [
   'aligned',
@@ -40,6 +41,14 @@ class BottomBar extends ConsumerWidget {
                 children: [
                   IconButton(icon: const Icon(Icons.format_bold), onPressed: handler.bold, tooltip: 'Bold'),
                   IconButton(icon: const Icon(Icons.format_italic), onPressed: handler.italic, tooltip: 'Italic'),
+                  IconButton(
+                    icon: const Icon(Icons.palette),
+                    onPressed: () {
+                      ref.read(scribbleProvider.notifier).setColor(Theme.of(context).textTheme.bodyText2!.color!);
+                      Navigator.push(context, MaterialPageRoute(builder: (_) => const DrawScreen()));
+                    },
+                    tooltip: 'Insert drawing',
+                  ),
                   IconButton(
                     icon: const Icon(Icons.format_strikethrough),
                     onPressed: handler.strikethrough,

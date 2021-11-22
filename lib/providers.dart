@@ -3,17 +3,18 @@ import 'dart:convert';
 import 'dart:math';
 
 // import 'package:flutter/foundation.dart';
+// import 'core/core.dart';
+// import 'element.dart';
+
 import 'package:flutter/services.dart';
 import 'package:flutter/material.dart' hide Text;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:scribble/scribble.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:text/text.dart';
 import 'package:universal_io/io.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:markdown/markdown.dart' as md;
-
-// import 'core/core.dart';
-// import 'element.dart';
 
 final sharedPrefsProvider = FutureProvider((_) => SharedPreferences.getInstance());
 final initializedProvider = Provider<bool>((ref) => ref.watch(sharedPrefsProvider).asData != null);
@@ -59,6 +60,9 @@ final fontSizeProvider = StateNotifierProvider<FontSizeNotifier, double>((ref) {
   final s = ref.watch(sharedPrefsProvider);
   return FontSizeNotifier.fromPref(s.asData?.value);
 });
+
+final scribbleProvider =
+    StateNotifierProvider<ScribbleNotifier, ScribbleState>((_) => ScribbleNotifier(maxHistoryLength: 100));
 
 // ------------------------ class definitions -----------------------------------
 
