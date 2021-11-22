@@ -16,3 +16,6 @@ bridge.Element convertElement(js.Element js) {
 bridge.Attribute convertAttribute(js.Attribute js) {
   return bridge.Attribute(key: js.key, value: js.value);
 }
+
+void log([dynamic o, dynamic o1, dynamic o2]) => js.log(o, o1, o2);
+void error([dynamic o, dynamic o1, dynamic o2]) => js.error(o, o1, o2);

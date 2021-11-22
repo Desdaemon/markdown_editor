@@ -25,7 +25,7 @@ final userProvider = StreamProvider((_) => FirebaseAuth.instance.userChanges());
 final uidProvider = Provider((ref) => ref.watch(userProvider).asData?.value?.uid);
 final buffersCollection = FirebaseFirestore.instance.collection('buffers').withConverter<Buffer>(
       fromFirestore: (doc, _) => Buffer.fromJson({
-        for (final en in doc.data()!.entries) en.key: en.value,
+        ...doc.data()!,
         'id': doc.id,
       }),
       toFirestore: (buf, _) => buf.toJson(),
@@ -40,7 +40,7 @@ final buffersProvider = FutureProvider((ref) async {
 
 final sourceProvider = StateNotifierProvider<AppNotifier, AppModel>((ref) {
   final s = ref.watch(sharedPrefsProvider);
-  return AppNotifier.fromPref(s.asData?.value, ref);
+  return AppNotifier.fromPref(s.asData?.value, ref, seed: ref.watch(buffersProvider).asData?.value);
 });
 
 final dirtyProvider = Provider((ref) {
@@ -101,10 +101,11 @@ class Buffer {
     required this.contents,
     required this.uid,
     required this.removed,
-    this.id,
+    required this.id,
     this.path,
   })  : assert(id == null || path == null, 'Expected Firebase buffer to have no path, got $path'),
-        assert(id == null || contents != null, 'Expected Firebase buffer to include content');
+        assert(id == null || contents != null, 'Expected Firebase buffer to include content'),
+        assert(id == null || uid != null, 'Expected Firebase buffer to have UID');
 
   Buffer copyWith({
     String? value,
@@ -113,6 +114,7 @@ class Buffer {
     String? contents,
     String? uid,
     bool? removed,
+    String? id,
   }) {
     return Buffer(
       value ?? this.value,
@@ -121,6 +123,7 @@ class Buffer {
       contents: contents ?? this.contents,
       uid: uid ?? this.uid,
       removed: removed ?? this.removed,
+      id: id ?? this.id,
     );
   }
 
@@ -132,21 +135,40 @@ class Buffer {
         'removed': removed,
       };
 
-  static Buffer fromJson(Map<String, dynamic> json) => Buffer(
-        json['value'],
-        id: json['id'],
-        dirty: false,
-        path: json['path'],
-        contents: json['contents'],
-        uid: json['uid'],
-        removed: json['removed'],
-      );
+  @override
+  String toString() {
+    return 'Buffer { id: $id, uid: $uid, value: $value }';
+  }
+
+  static Buffer fromJson(Map<String, dynamic> json) {
+    log('new buffer from json', json);
+    return Buffer(
+      json['value'],
+      id: json['id'],
+      dirty: false,
+      path: json['path'],
+      contents: json['contents'],
+      uid: json['uid'],
+      removed: json['removed'],
+    );
+  }
 
   String get title => value + (dirty ? ' •' : '');
 
   /// Writes to [path] the given contents if [path] is not null.
   Future<void> writeFile(String contents) async {
     if (path != null) await File(path!).writeAsString(contents, flush: true);
+  }
+
+  static Future<Buffer> persistFirebase(Buffer buf) async {
+    log('buf.id=${buf.id}');
+    if (buf.id == null) {
+      final ref = await buffersCollection.add(buf);
+      return buf.copyWith(id: ref.id);
+    } else {
+      await buffersCollection.doc(buf.id).update(buf.toJson());
+      return buf;
+    }
   }
 }
 
@@ -198,13 +220,14 @@ class AppNotifier extends StateNotifier<AppModel> {
         ));
 
   /// Non-null if [loggedIn] is true.
-  String? get uid => ref.read(uidProvider);
+  String? get uid => ref.watch(uidProvider);
   bool get loggedIn => uid != null;
 
-  factory AppNotifier.fromPref(SharedPreferences? pref, ProviderRefBase ref) {
-    final buffers = ref.read(buffersProvider).asData?.value ??
+  factory AppNotifier.fromPref(SharedPreferences? pref, ProviderRefBase ref, { List<Buffer>? seed }) {
+    final buffers = seed ??
         pref?.getStringList(_activeBufferKey)?.map((source) => Buffer.fromJson(jsonDecode(source))).toList() ??
-        [Buffer('source', dirty: false, contents: null, uid: ref.read(uidProvider), removed: false)];
+        [Buffer('source', dirty: false, contents: null, uid: ref.read(uidProvider), removed: false, id: null)];
+    log(buffers);
     final active = pref?.getInt(_currentBufferIndexKey) ?? 0;
     final buffer = pref?.getString(buffers[active].value);
     return AppNotifier(
@@ -240,7 +263,15 @@ class AppNotifier extends StateNotifier<AppModel> {
       currentBufferIndex: state.activeBuffers.length,
       activeBuffers: [
         ...state.activeBuffers,
-        Buffer(bufferName ?? newBufferName, dirty: false, path: path, contents: _contents, uid: uid, removed: false)
+        Buffer(
+          bufferName ?? newBufferName,
+          dirty: false,
+          path: path,
+          contents: _contents,
+          uid: uid,
+          removed: false,
+          id: null,
+        )
       ],
     );
     controller.text = contents;
@@ -254,14 +285,13 @@ class AppNotifier extends StateNotifier<AppModel> {
   }) async {
     final online = loggedIn;
     if (activeBuffers) {
-      sharedPrefs?.setStringList(
+      await sharedPrefs?.setStringList(
         _activeBufferKey,
         state.activeBuffers.map((e) => jsonEncode(e.toJson())).toList(growable: false),
       );
       if (online) {
-        await Stream.fromFutures(state.activeBuffers.map((buf) {
-          return buffersCollection.doc(buf.id).update(buf.toJson());
-        })).drain();
+        final bufs = await Stream.fromFutures(state.activeBuffers.map(Buffer.persistFirebase)).toList();
+        state = state.copyWith(activeBuffers: bufs);
       }
     }
     if (currentBufferIndex) {
@@ -269,14 +299,17 @@ class AppNotifier extends StateNotifier<AppModel> {
     }
     if (buffer) {
       final buf = activeBuffer;
-      sharedPrefs?.setString(buf.value, state.buffer);
+      await sharedPrefs?.setString(buf.value, state.buffer);
       await activeBuffer.writeFile(state.buffer);
       // don't persist anymore, activeBuffers branch should have covered this
       if (online && !activeBuffers) {
-        await buffersCollection.doc(buf.id).update({'contents': buf.contents});
+        final res = await Buffer.persistFirebase(buf);
+        state = state.copyWith(activeBuffers: [
+          for (final i in state.activeBuffers)
+            if (i.value == res.value) res else i
+        ]);
       }
     }
-    ref.refresh(sourceProvider);
   }
 
   /// Waits for [_delay] before updating the buffer.
@@ -328,7 +361,11 @@ class AppNotifier extends StateNotifier<AppModel> {
 
   Future<String?> bufferContentFromStorage(String key) async {
     return await SynchronousFuture(sharedPrefs?.getString(key)) ??
-        (await buffersCollection.where('value', isEqualTo: key).limit(1).get()).docs.first.data().contents;
+        (await buffersCollection.where('value', isEqualTo: key).where('uid', isEqualTo: uid).limit(1).get())
+            .docs
+            .first
+            .data()
+            .contents;
   }
 
   Future<void> switchBuffer(int index) async {
@@ -348,7 +385,16 @@ class AppNotifier extends StateNotifier<AppModel> {
     final contents = loggedIn ? '' : null;
     state = state.copyWith(
       buffer: '',
-      activeBuffers: [Buffer('Untitled', dirty: false, contents: contents, uid: uid, removed: false)],
+      activeBuffers: [
+        Buffer(
+          'Untitled',
+          dirty: false,
+          contents: contents,
+          uid: uid,
+          removed: false,
+          id: null,
+        )
+      ],
       currentBufferIndex: 0,
     );
     await persist(buffer: true, activeBuffers: true, currentBufferIndex: true);
@@ -371,7 +417,7 @@ class AppNotifier extends StateNotifier<AppModel> {
   }
 
   Future<void> removeFromFirebase(Buffer b) async {
-    if (loggedIn) {
+    if (loggedIn && b.id != null) {
       await buffersCollection.doc(b.id).update({'removed': true});
     }
   }

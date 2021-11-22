@@ -84,13 +84,16 @@ class AppDrawer extends ConsumerWidget {
                     label: const Text('Login with Google'),
                   );
                 },
-                child: OutlinedButton.icon(
-                  icon: const Icon(Icons.logout),
-                  label: const Text('Logout'),
-                  onPressed: () {
-                    FirebaseAuth.instance.signOut();
-                  },
-                ),
+                child: Consumer(builder: (bc, ref, _) {
+                  final user = ref.watch(userProvider).asData?.value;
+                  return OutlinedButton.icon(
+                    icon: const Icon(Icons.logout),
+                    label: user?.uid != null ? Text('UID: ${user!.uid}') : const Text('Logout'),
+                    onPressed: () {
+                      FirebaseAuth.instance.signOut();
+                    },
+                  );
+                }),
               ),
               OutlinedButton.icon(
                 icon: const Icon(Icons.monitor_weight),

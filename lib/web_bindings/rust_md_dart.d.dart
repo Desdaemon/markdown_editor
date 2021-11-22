@@ -50,3 +50,9 @@ class InitOutput {
 }
 
 typedef Memory = dynamic;
+
+@JS('console.log')
+external void log([dynamic o, dynamic o1, dynamic o2]);
+
+@JS('console.error')
+external void error([dynamic o, dynamic o1, dynamic o2]);
