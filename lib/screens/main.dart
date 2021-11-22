@@ -97,7 +97,7 @@ class _MainState extends ConsumerState<Main> {
       description: 'Insert math environment',
       onEvent: (ref, _) {
         ref.read(handlerProvider).mathEnvironment('aligned');
-				return KeyEventResult.handled;
+        return KeyEventResult.handled;
       },
     ),
     EventHandler(
@@ -193,7 +193,7 @@ class _MainState extends ConsumerState<Main> {
       return _cache ?? const Center(child: CircularProgressIndicator());
     }
     return _cache = CustomMarkdownWidget(
-      ast: ast.asData!.value!,
+      ast: ast.asData!.value,
       padding: EdgeInsets.zero,
       controller: previewScrollController,
       lazy: !ref.watch(visibiiltyProvider).doSyncScroll,

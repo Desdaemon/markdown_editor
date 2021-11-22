@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
 
+// import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/material.dart' hide Text;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -9,9 +10,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:text/text.dart';
 import 'package:universal_io/io.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:markdown/markdown.dart' as md;
 
-import 'core/core.dart';
-import 'element.dart';
+// import 'core/core.dart';
+// import 'element.dart';
 
 final sharedPrefsProvider = FutureProvider((_) => SharedPreferences.getInstance());
 final initializedProvider = Provider<bool>((ref) => ref.watch(sharedPrefsProvider).asData != null);
@@ -31,8 +33,16 @@ final dirtyProvider = Provider((ref) {
 
 final astProvider = FutureProvider((ref) async {
   final source = ref.watch(sourceProvider);
-  final ast = await parse(markdown: source.buffer);
-  return ast?.map(ElementAdapter.from).toList();
+  // if (kIsWeb) {
+  // final ast = await parse(markdown: source.buffer);
+  // return ast?.map(ElementAdapter.from).toList();
+  // } else {
+  final doc = md.Document(
+    extensionSet: md.ExtensionSet.gitHubWeb,
+    inlineSyntaxes: [MathSyntax(), md.EmojiSyntax()],
+  );
+  return doc.parseLines(const LineSplitter().convert(source.buffer));
+  // }
 });
 
 final themeModeProvider = StateNotifierProvider<ThemeNotifier, ThemeState>((ref) {
@@ -497,5 +507,20 @@ class TextControllerHandler {
       baseOffset: line.start,
       extentOffset: line.end,
     );
+  }
+}
+
+class MathSyntax extends md.InlineSyntax {
+  MathSyntax() : super(r'(\${1,2})([^\0]+?)\1');
+  @override
+  bool onMatch(md.InlineParser parser, Match match) {
+    if (match.groupCount != 2) return true;
+    final display = match[1]! == r'$$';
+    final elm = md.Element('math', [
+      md.Text(match[2]!),
+    ])
+      ..attributes.addAll({'display': display.toString()});
+    parser.addNode(elm);
+    return true;
   }
 }

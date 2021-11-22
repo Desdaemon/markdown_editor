@@ -1,8 +1,0 @@
-{
-  "name": "Markdown Editor",
-  "short_name": "Markdown Editor",
-  "start_url": ".",
-  "display": "standalone",
-  "background_color": "#fff",
-  "description": "Markdown Editor"
-}

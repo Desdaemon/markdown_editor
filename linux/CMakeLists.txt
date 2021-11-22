@@ -71,17 +71,17 @@ include(flutter/generated_plugins.cmake)
 # Running cargo build
 include(FetchContent)
 
-FetchContent_Declare(
-  Corrosion
-  GIT_REPOSITORY https://github.com/AndrewGaspar/corrosion.git
-  GIT_TAG origin/master
-)
-FetchContent_MakeAvailable(Corrosion)
+# FetchContent_Declare(
+  # Corrosion
+  # GIT_REPOSITORY https://github.com/AndrewGaspar/corrosion.git
+  # GIT_TAG origin/master
+# )
+# FetchContent_MakeAvailable(Corrosion)
 
-set(CRATE_NAME "rust-md-dart")
-corrosion_import_crate(MANIFEST_PATH ../packages/${CRATE_NAME}/Cargo.toml)
-target_link_libraries(${BINARY_NAME} PRIVATE ${CRATE_NAME})
-list(APPEND PLUGIN_BUNDLED_LIBRARIES $<TARGET_FILE:${CRATE_NAME}-shared>)
+# set(CRATE_NAME "rust-md-dart")
+# corrosion_import_crate(MANIFEST_PATH ../packages/${CRATE_NAME}/Cargo.toml)
+# target_link_libraries(${BINARY_NAME} PRIVATE ${CRATE_NAME})
+# list(APPEND PLUGIN_BUNDLED_LIBRARIES $<TARGET_FILE:${CRATE_NAME}-shared>)
 
 # === Installation ===
 # By default, "installing" just makes a relocatable bundle in the build

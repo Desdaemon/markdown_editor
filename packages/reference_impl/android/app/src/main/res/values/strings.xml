@@ -1,7 +1,0 @@
-<?xml version='1.0' encoding='utf-8'?>
-<resources>
-    <string name="app_name">reference_impl</string>
-    <string name="title_activity_main">reference_impl</string>
-    <string name="package_name">com.desdaemon.reference_impl</string>
-    <string name="custom_url_scheme">com.desdaemon.reference_impl</string>
-</resources>
