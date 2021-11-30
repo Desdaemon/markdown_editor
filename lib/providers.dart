@@ -2,10 +2,6 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
 
-// import 'package:flutter/foundation.dart';
-// import 'core/core.dart';
-// import 'element.dart';
-
 import 'package:flutter/services.dart';
 import 'package:flutter/material.dart' hide Text;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -15,6 +11,10 @@ import 'package:text/text.dart';
 import 'package:universal_io/io.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:markdown/markdown.dart' as md;
+
+import 'helpers/helpers.dart'
+    if (dart.library.io) 'helpers/helpers.io.dart'
+    if (dart.library.html) 'helpers/helpers.web.dart';
 
 final sharedPrefsProvider = FutureProvider((_) => SharedPreferences.getInstance());
 final initializedProvider = Provider<bool>((ref) => ref.watch(sharedPrefsProvider).asData != null);
@@ -32,18 +32,15 @@ final dirtyProvider = Provider((ref) {
   return buffers[index].dirty;
 });
 
-final astProvider = FutureProvider((ref) async {
-  final source = ref.watch(sourceProvider);
-  // if (kIsWeb) {
-  // final ast = await parse(markdown: source.buffer);
-  // return ast?.map(ElementAdapter.from).toList();
-  // } else {
+final bufferProvider = Provider((ref) => ref.watch(sourceProvider).buffer);
+
+final astProvider = Provider((ref) {
+  final source = ref.watch(bufferProvider);
   final doc = md.Document(
     extensionSet: md.ExtensionSet.gitHubWeb,
     inlineSyntaxes: [MathSyntax(), md.EmojiSyntax()],
   );
-  return doc.parseLines(const LineSplitter().convert(source.buffer));
-  // }
+  return doc.parseLines(const LineSplitter().convert(source));
 });
 
 final themeModeProvider = StateNotifierProvider<ThemeNotifier, ThemeState>((ref) {
@@ -307,6 +304,16 @@ class AppNotifier extends StateNotifier<AppModel> {
       contents = await File(path).readAsString();
     }
     newBuffer(bufferName: file.name, path: path, contents: contents);
+  }
+
+  void export() {
+    final text = controller.text;
+    if (text.isEmpty) return;
+    final html = md.markdownToHtml(
+      text,
+      extensionSet: md.ExtensionSet.gitHubWeb,
+    );
+    exportImpl(html);
   }
 }
 

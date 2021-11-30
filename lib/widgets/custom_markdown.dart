@@ -70,8 +70,12 @@ class _CustomMarkdownWidgetState extends State<CustomMarkdownWidget> implements 
     } else {
       thunkChildren = [
         Column(
-            children:
-                children.map((child) => RepaintBoundary(child: ThunkWidget(child: child))).toList(growable: false))
+          children: children
+              .map(
+                (child) => RepaintBoundary(child: ThunkWidget(child: child)),
+              )
+              .toList(growable: false),
+        )
       ];
     }
     return ListView(

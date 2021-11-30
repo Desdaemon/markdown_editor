@@ -53,7 +53,6 @@ class EventHandler {
 
 class _MainState extends ConsumerState<Main> {
   static final _isMobile = Platform.isAndroid || Platform.isIOS;
-  Widget? _cache;
   Timer? timer;
 
   final previewScrollController = ScrollController();
@@ -189,11 +188,8 @@ class _MainState extends ConsumerState<Main> {
 
   Widget buildPreview(BuildContext bc, WidgetRef ref, Widget? _) {
     final ast = ref.watch(astProvider);
-    if (ast.asData?.value == null) {
-      return _cache ?? const Center(child: CircularProgressIndicator());
-    }
-    return _cache = CustomMarkdownWidget(
-      ast: ast.asData!.value,
+    return CustomMarkdownWidget(
+      ast: ast,
       padding: EdgeInsets.zero,
       controller: previewScrollController,
       lazy: !ref.watch(visibiiltyProvider).doSyncScroll,
