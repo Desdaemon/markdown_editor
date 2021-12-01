@@ -8,7 +8,7 @@ Cross-platform Markdown editor in Flutter.
 - [x] Emoji syntax
 - [x] Math (Katex)
 - [x] VSCode shortcuts
-- [ ] Export to HTML
+- [x] Export to HTML
 - [ ] Import/manage Git repositories
 - [ ] Syntax highlighting
 - [ ] Custom shortcuts

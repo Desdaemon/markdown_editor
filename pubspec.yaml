@@ -46,6 +46,7 @@ dependencies:
   statsfl: ^2.0.1+1
   file_picker: ^4.2.1
   scribble: ^0.2.1
+  path_provider: ^2.0.7
 
 dev_dependencies:
   flutter_test:

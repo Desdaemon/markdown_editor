@@ -6,8 +6,6 @@ import 'package:flutter/material.dart';
 
 import '../providers.dart';
 
-enum Exports { html, htmlPlain, md }
-
 void _noop() {}
 
 class AppDrawer extends ConsumerWidget {
@@ -76,7 +74,7 @@ class AppDrawer extends ConsumerWidget {
                 label: const Text('Open'),
                 onPressed: ref.read(sourceProvider.notifier).open,
               ),
-              PopupMenuButton(
+              PopupMenuButton<Exports>(
                 child: IgnorePointer(
                   child: OutlinedButton.icon(
                     icon: const Icon(Icons.import_export),
@@ -84,11 +82,9 @@ class AppDrawer extends ConsumerWidget {
                     onPressed: _noop,
                   ),
                 ),
-                onSelected: (_) {
-                  ref.read(sourceProvider.notifier).export();
-                },
+                onSelected: ref.read(sourceProvider.notifier).export,
                 itemBuilder: (bc) {
-                  return <PopupMenuEntry<Exports>>[
+                  return [
                     const PopupMenuItem(value: Exports.html, child: Text('HTML')),
                     const PopupMenuItem(value: Exports.htmlPlain, child: Text('HTML (Plain)')),
                     const PopupMenuItem(value: Exports.md, child: Text('Markdown')),
