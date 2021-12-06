@@ -6,7 +6,7 @@ import 'package:flutter/material.dart';
 
 import '../providers.dart';
 
-const commit = String.fromEnvironment('commit', defaultValue: 'N/A');
+const commit = String.fromEnvironment('commit');
 
 void _noop() {}
 
@@ -131,12 +131,13 @@ class AppDrawer extends ConsumerWidget {
             ),
           );
         }),
-        const SliverList(
-          delegate: SliverChildListDelegate.fixed([
-            Divider(),
-            Center(child: Text('Commit: $commit')),
-          ]),
-        ),
+        if (commit.isNotEmpty)
+          const SliverList(
+            delegate: SliverChildListDelegate.fixed([
+              Divider(),
+              Center(child: Text('Commit: $commit')),
+            ]),
+          ),
       ]),
     );
   }

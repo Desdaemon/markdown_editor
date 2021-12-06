@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/material.dart' hide Text;
 import 'package:flutter_markdown/flutter_markdown.dart';
@@ -292,18 +293,18 @@ class AppNotifier extends StateNotifier<AppModel> {
 
   Future<void> open() async {
     final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
       allowedExtensions: const ['md', 'txt'],
-      withReadStream: true,
     );
     if (result == null) return;
     final file = result.files.single;
-    final path = file.path;
-    assert((file.path != null) || (file.readStream != null), "Either path or readStream has to be present");
     String contents;
-    if (path == null) {
-      contents = await file.readStream!.map(const Utf8Decoder().convert).single;
+    String? path;
+    if (kIsWeb) {
+      contents = const Utf8Decoder().convert(file.bytes!);
     } else {
-      contents = await File(path).readAsString();
+      path = file.path;
+      contents = await File(file.path!).readAsString();
     }
     newBuffer(bufferName: file.name, path: path, contents: contents);
   }
