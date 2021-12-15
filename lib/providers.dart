@@ -2,12 +2,10 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
 
-// import 'package:flutter/foundation.dart';
-// import 'core/core.dart';
-// import 'element.dart';
-
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/material.dart' hide Text;
+import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:scribble/scribble.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -15,6 +13,10 @@ import 'package:text/text.dart';
 import 'package:universal_io/io.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:markdown/markdown.dart' as md;
+
+import 'helpers/helpers.dart'
+    if (dart.library.io) 'helpers/helpers.io.dart'
+    if (dart.library.html) 'helpers/helpers.web.dart';
 
 final sharedPrefsProvider = FutureProvider((_) => SharedPreferences.getInstance());
 final initializedProvider = Provider<bool>((ref) => ref.watch(sharedPrefsProvider).asData != null);
@@ -32,18 +34,15 @@ final dirtyProvider = Provider((ref) {
   return buffers[index].dirty;
 });
 
-final astProvider = FutureProvider((ref) async {
-  final source = ref.watch(sourceProvider);
-  // if (kIsWeb) {
-  // final ast = await parse(markdown: source.buffer);
-  // return ast?.map(ElementAdapter.from).toList();
-  // } else {
+final bufferProvider = Provider((ref) => ref.watch(sourceProvider).buffer);
+
+final astProvider = Provider((ref) {
+  final source = ref.watch(bufferProvider);
   final doc = md.Document(
     extensionSet: md.ExtensionSet.gitHubWeb,
-    inlineSyntaxes: [MathSyntax(), md.EmojiSyntax()],
+    inlineSyntaxes: [MathSyntax(), TaskListSyntax()],
   );
-  return doc.parseLines(const LineSplitter().convert(source.buffer));
-  // }
+  return doc.parseLines(const LineSplitter().convert(source));
 });
 
 final themeModeProvider = StateNotifierProvider<ThemeNotifier, ThemeState>((ref) {
@@ -121,6 +120,7 @@ class AppModel {
     );
   }
 
+  Buffer get currentBuffer => activeBuffers[currentBufferIndex];
   List<String> bufferKeys() => activeBuffers.map((e) => e.value).toList(growable: false);
 }
 
@@ -293,20 +293,140 @@ class AppNotifier extends StateNotifier<AppModel> {
 
   Future<void> open() async {
     final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
       allowedExtensions: const ['md', 'txt'],
-      withReadStream: true,
     );
     if (result == null) return;
     final file = result.files.single;
-    final path = file.path;
-    assert((file.path != null) || (file.readStream != null), "Either path or readStream has to be present");
     String contents;
-    if (path == null) {
-      contents = await file.readStream!.map(const Utf8Decoder().convert).single;
+    String? path;
+    if (kIsWeb) {
+      contents = const Utf8Decoder().convert(file.bytes!);
     } else {
-      contents = await File(path).readAsString();
+      path = file.path;
+      contents = await File(file.path!).readAsString();
     }
     newBuffer(bufferName: file.name, path: path, contents: contents);
+  }
+
+  void export(Exports type) {
+    switch (type) {
+      case Exports.htmlPlain:
+        return _exportHtmlPlain();
+      case Exports.html:
+        return _exportHtml();
+      case Exports.md:
+        return _exportMarkdown();
+    }
+  }
+
+  String _currentBufferAsHtml() => md.markdownToHtml(
+        controller.text,
+        extensionSet: md.ExtensionSet.gitHubWeb,
+        inlineSyntaxes: [TaskListSyntax()],
+      );
+
+  void _exportMarkdown() {
+    final markdown = controller.text;
+    if (markdown.isNotEmpty) {
+      exportImpl(markdown, html: false, fileName: state.currentBuffer.title);
+    }
+  }
+
+  void _exportHtmlPlain() {
+    final html = _currentBufferAsHtml();
+    if (html.isNotEmpty) {
+      final title = state.currentBuffer.title;
+      exportImpl(html, html: true, fileName: '$title-plain');
+    }
+  }
+
+  void _exportHtml() {
+    final body = _currentBufferAsHtml();
+    if (body.isNotEmpty) {
+      final title = state.currentBuffer.title;
+      const template = '''
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+		<title>{{ title }}</title>
+		<script>
+			var media = matchMedia("(prefers-color-scheme: dark)");
+			function onPreferredThemeChange(event) {
+				var suffix = event.matches ? 'dark': 'light';
+				var elm;
+				if (elm = document.getElementById('markdown-style')) { elm.remove(); }
+				var link = document.createElement('link');
+				link.setAttribute('rel', 'stylesheet');
+				link.setAttribute('href', `https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/5.0.0/github-markdown-\${suffix}.min.css`);
+				link.setAttribute('id', 'markdown-style');
+				document.head.appendChild(link);
+			}
+			onPreferredThemeChange(media);
+			media.addEventListener('change', onPreferredThemeChange);
+		</script>
+		<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.13.0/dist/katex.min.css"
+          integrity="sha384-t5CR+zwDAROtph0PXGte6ia8heboACF9R5l/DiY+WZ3P2lxNgvJkQk5n7GPvLMYw" crossorigin="anonymous">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.13.0/dist/katex.min.js"
+        integrity="sha384-FaFLTlohFghEIZkw6VGwmf9ISTubWAVYW8tG8+w2LAIftJEULZABrF9PPFv+tVkH"
+        crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.13.0/dist/contrib/auto-render.min.js"
+        integrity="sha384-bHBqxz8fokvgoJ/sc17HODNxa42TlaEhB+w8ZJXTc2nZf1VgEaFZeZvT4Mznfz0v"
+        crossorigin="anonymous"></script>
+    <script>
+			document.addEventListener("DOMContentLoaded", function render() {
+				renderMathInElement(document.body, {
+					delimiters: [
+						{ left: "\$\$", right: "\$\$", display: true },
+						{ left: "\$", right: "\$", display: false }
+					],
+					throwOnError: false
+				});
+			});
+    </script>
+	</head>
+	<body>
+		<article class="markdown-body">{{ body }}</article>
+		<style>
+			body {
+				margin: 0;
+			}
+			.markdown-body .task-list-item {
+				list-style-type: none;
+			}
+			.markdown-body .task-list-item+.task-list-item {
+				margin-top: 3px;
+			}
+			.markdown-body .task-list-item input {
+				margin: 0 .2em .25em -1.6em;
+				vertical-align: middle;
+			}
+			.markdown-body {
+				box-sizing: border-box;
+				min-width: 200px;
+				max-width: 980px;
+				margin: 0 auto;
+				padding: 45px;
+			}
+			@media (max-width: 767px) {
+				.markdown-body {
+					padding: 15px;
+				}
+			}
+			@media (prefers-color-scheme: dark) {
+				body {
+					background-color: #0d1117;
+				}
+			}
+		</style>
+	</body>
+</html>''';
+      final page = template.replaceFirst('{{ title }}', title).replaceFirst('{{ body }}', body);
+      exportImpl(page, html: true, fileName: title);
+    }
   }
 }
 
@@ -352,13 +472,17 @@ class ThemeNotifier extends StateNotifier<ThemeState> {
 
   factory ThemeNotifier.fromPref(SharedPreferences? pref) {
     if (pref == null) return ThemeNotifier();
-    final index = pref.getInt(persistKey) ?? ThemeState.system.themeMode.index;
-    return ThemeNotifier(theme: ThemeState.fromIndex(index), pref: pref);
+    return ThemeNotifier(theme: stateOf(pref), pref: pref);
   }
 
   ThemeState next() {
     pref?.setInt(persistKey, state.next.themeMode.index);
     return state = state.next;
+  }
+
+  static ThemeState stateOf(SharedPreferences pref) {
+    final index = pref.getInt(persistKey) ?? ThemeState.system.themeMode.index;
+    return ThemeState.fromIndex(index);
   }
 }
 
@@ -528,3 +652,5 @@ class MathSyntax extends md.InlineSyntax {
     return true;
   }
 }
+
+enum Exports { html, htmlPlain, md }
