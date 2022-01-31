@@ -26,7 +26,7 @@ jobs:
       - uses: invertase/github-action-dart-analyzer@v1
         with:
           # (Optional) Treat info level issues as fatal.
-          fatal-infos: false
+          fatal-infos: true
 
           # (Optional) Treat warning level issues as fatal
           # (defaults to true).
