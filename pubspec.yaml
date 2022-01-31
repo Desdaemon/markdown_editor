@@ -35,10 +35,9 @@ dependencies:
   # Use with the CupertinoIcons class for iOS style icons.
   # cupertino_icons: ^1.0.2
   universal_io: ^2.0.4
-  flutter_rust_bridge: 1.6.0
   flutter_riverpod: ^1.0.0
   flutter_markdown: ^0.6.7
-  flutter_math_fork: ^0.5.0
+  flutter_math_fork: ^0.6.1
   url_launcher: ^6.0.12
   shared_preferences: ^2.0.8
   text: ^0.2.0
