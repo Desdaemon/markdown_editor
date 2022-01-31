@@ -1,0 +1,47 @@
+name: "check"
+on: # rebuild any PRs and main branch changes
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: dart-lang/setup-dart@v1
+      - name: Lint check (run `dart format -l 120 .` if this fails)
+        run: dart format --line-length 120 -o none --set-exit-if-changed .
+  analyze: # make sure the action works on a clean machine without building
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+      - run: flutter pub get
+      - run: flutter doctor -v
+      - uses: invertase/github-action-dart-analyzer@v1
+        with:
+          # (Optional) Treat info level issues as fatal.
+          fatal-infos: false
+
+          # (Optional) Treat warning level issues as fatal
+          # (defaults to true).
+          fatal-warnings: true
+
+          # (Optional) Whether to add annotations to GitHub actions summary / PR
+          # review files.
+          # (defaults to true).
+          annotate: true
+
+          # (Optional) If set to true only annotations will be created and the
+          # GitHub action itself will not fail on Dart analyzer problems.
+          # (defaults to false).
+          annotate-only: false
+
+          # (Optional) The working directory to run the Dart analyzer in
+          # (defaults to `./`).
+          working-directory: ./
