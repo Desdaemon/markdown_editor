@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:markdown/markdown.dart' as md;
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:markdown_editor/widgets/math.dart';
-import 'package:markdown_editor/widgets/thunk_widget.dart';
+import 'package:markdown_editor/widgets/memo.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class CustomMarkdownWidget extends StatefulWidget {
@@ -63,20 +63,8 @@ class _CustomMarkdownWidgetState extends State<CustomMarkdownWidget> implements 
       paddingBuilders: const {},
     );
     final children = builder.build(widget.ast);
-    final List<Widget> thunkChildren;
-    if (widget.lazy) {
-      thunkChildren = children.map(ThunkWidget.from).toList(growable: false);
-    } else {
-      thunkChildren = [
-        Column(
-          children: children
-              .map(
-                (child) => RepaintBoundary(child: ThunkWidget(child: child)),
-              )
-              .toList(growable: false),
-        )
-      ];
-    }
+    final memoed = children.map(Memo.from).toList(growable: false);
+    final thunkChildren = widget.lazy ? memoed : [Column(children: RepaintBoundary.wrapAll(memoed))];
     return ListView(
       padding: widget.padding,
       controller: widget.controller,
@@ -111,15 +99,11 @@ class _CustomMarkdownWidgetState extends State<CustomMarkdownWidget> implements 
           children: [
             SimpleDialogOption(
               child: const Text('Yes'),
-              onPressed: () {
-                Navigator.pop(bc, true);
-              },
+              onPressed: () => Navigator.pop(bc, true),
             ),
             SimpleDialogOption(
               child: const Text('No'),
-              onPressed: () {
-                Navigator.pop(bc, false);
-              },
+              onPressed: () => Navigator.pop(bc, false),
             ),
           ],
         );

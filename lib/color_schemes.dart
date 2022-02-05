@@ -5,9 +5,9 @@ const ayuFg = Color(0xff575f66);
 /// See [ayu-colors](https://github.com/ayu-theme/ayu-colors)
 const ayuDark = ColorScheme(
   primary: Color(0xff39bae6), // syntax.tag
-  primaryVariant: Color(0xff59c2ff), // syntax.entity
+  primaryContainer: Color(0xff59c2ff), // syntax.entity
   secondary: Color(0xffe6b450), // common.accent
-  secondaryVariant: Color(0xffffb454), // syntax.func
+  secondaryContainer: Color(0xffffb454), // syntax.func
   surface: Color(0xff273747), // ui.selection.bg
   background: Color(0xff0a0e14), // common.bg
   error: Color(0xffff3333), // syntax.error
@@ -21,9 +21,9 @@ const ayuDark = ColorScheme(
 
 const ayuLight = ColorScheme(
   primary: Color(0xff55b4d4),
-  primaryVariant: Color(0xff399ee6),
+  primaryContainer: Color(0xff399ee6),
   secondary: Color(0xffff9940),
-  secondaryVariant: Color(0xfff2ae49),
+  secondaryContainer: Color(0xfff2ae49),
   surface: Color(0xffe7e8e9),
   background: Color(0xfffafafa),
   error: Color(0xfff51818),
