@@ -26,7 +26,8 @@ apply plugin: 'kotlin-android'
 apply from: "$flutterRoot/packages/flutter_tools/gradle/flutter.gradle"
 
 android {
-    compileSdkVersion 31
+    compileSdkVersion flutter.compileSdkVersion
+    ndkVersion flutter.ndkVersion
 
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_8
@@ -44,8 +45,10 @@ android {
     defaultConfig {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
         applicationId "com.example.markdown_editor"
-        minSdkVersion 16
-        targetSdkVersion 30
+        // You can update the following values to match your application needs.
+        // For more information, see: https://docs.flutter.dev/deployment/android#reviewing-the-gradle-build-configuration.
+        minSdkVersion flutter.minSdkVersion
+        targetSdkVersion flutter.targetSdkVersion
         versionCode flutterVersionCode.toInteger()
         versionName flutterVersionName
     }
@@ -66,25 +69,3 @@ flutter {
 dependencies {
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
 }
-
-// def cargoDir = "../../packages/rust-md-dart"
-
-// // see https://stackoverflow.com/questions/69515032/how-to-integrate-flutter-apps-build-process-with-rust-code-i-e-when-building
-// [
-    // new Tuple2('Debug', 'debug'),
-    // new Tuple2('Profile', 'profile'),
-    // new Tuple2('Release', 'main')
-// ].each {
-    // def taskPostfix = it.first
-    // def profileMode = it.second
-    // def mode = profileMode != 'debug' ? '--release' : ''
-    // def jniPath = "../../android/app/src/$profileMode/jniLibs"
-    // tasks.whenTaskAdded { task ->
-        // if (task.name == "javaPreCompile$taskPostfix") {
-            // task.dependsOn "cargoBuild$taskPostfix"
-        // }
-    // }
-    // tasks.register("cargoBuild$taskPostfix", Exec) {
-        // commandLine 'sh', '-c', "cd $cargoDir && cargo ndk -t armeabi-v7a -t arm64-v8a -o $jniPath build $mode 2>&1"
-    // }
-// }
