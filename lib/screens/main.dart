@@ -48,6 +48,7 @@ class EventHandler {
       if (description != null) debugPrint(description);
       return onEvent(ref, event);
     }
+    return null;
   }
 }
 
@@ -73,12 +74,14 @@ class _MainState extends ConsumerState<Main> {
       description: 'Next buffer',
       onEvent: (ref, _) {
         ref.read(sourceProvider.notifier).nextBuffer();
+        return null;
       },
     ),
     EventHandler(
       key: PhysicalKeyboardKey.tab,
       onEvent: (ref, _) {
         ref.read(handlerProvider).tab();
+        return null;
       },
     ),
     EventHandler(
@@ -87,6 +90,7 @@ class _MainState extends ConsumerState<Main> {
       description: 'Select line',
       onEvent: (ref, _) {
         ref.read(handlerProvider).selectLine();
+        return null;
       },
     ),
     EventHandler(
@@ -105,6 +109,7 @@ class _MainState extends ConsumerState<Main> {
       description: 'Math block (text)',
       onEvent: (ref, event) {
         ref.read(handlerProvider).mathText();
+        return null;
       },
     ),
     EventHandler(
@@ -113,6 +118,7 @@ class _MainState extends ConsumerState<Main> {
       description: 'Bold',
       onEvent: (ref, _) {
         ref.read(handlerProvider).bold();
+        return null;
       },
     ),
     EventHandler(
@@ -121,6 +127,7 @@ class _MainState extends ConsumerState<Main> {
       description: 'Italic',
       onEvent: (ref, _) {
         ref.read(handlerProvider).italic();
+        return null;
       },
     ),
     EventHandler(
@@ -129,6 +136,7 @@ class _MainState extends ConsumerState<Main> {
       description: 'Bold',
       onEvent: (ref, _) {
         ref.read(handlerProvider).strikethrough();
+        return null;
       },
     ),
     EventHandler(
@@ -137,6 +145,7 @@ class _MainState extends ConsumerState<Main> {
       description: 'Save',
       onEvent: (ref, _) {
         ref.read(sourceProvider.notifier).save();
+        return null;
       },
     ),
   ];

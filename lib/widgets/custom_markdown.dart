@@ -109,8 +109,9 @@ class _CustomMarkdownWidgetState extends State<CustomMarkdownWidget> implements 
         );
       },
     );
-    if (ans == true && await canLaunch(href)) {
-      await launch(href);
+    final url = Uri.parse(href);
+    if (ans == true && await canLaunchUrl(url)) {
+      await launchUrl(url);
     }
   }
 
@@ -136,7 +137,7 @@ class MathBuilder extends MarkdownElementBuilder {
       source: source,
       display: display,
       fontSize: 16 * fontScale,
-      textColor: Theme.of(context).textTheme.bodyText2?.color,
+      textColor: Theme.of(context).textTheme.bodyMedium?.color,
     );
   }
 }

@@ -8,5 +8,5 @@ Future<void> exportImpl(String file, {bool html = false, String fileName = 'expo
   final ext = html ? 'html' : 'md';
   final path = p.join(tempdir.path, '$fileName.$ext');
   await File(path).writeAsString(file);
-  await launch('file://$path');
+  await launchUrl(Uri.parse('file://$path'));
 }

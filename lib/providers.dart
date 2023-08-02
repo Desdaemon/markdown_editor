@@ -4,7 +4,6 @@ import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart' hide Text;
-import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:scribble/scribble.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -39,7 +38,8 @@ final astProvider = Provider((ref) {
   final source = ref.watch(bufferProvider);
   final doc = md.Document(
     extensionSet: md.ExtensionSet.gitHubWeb,
-    inlineSyntaxes: [MathSyntax(), TaskListSyntax()],
+    inlineSyntaxes: [MathSyntax()],
+    blockSyntaxes: const [md.UnorderedListWithCheckboxSyntax()],
   );
   return doc.parseLines(const LineSplitter().convert(source));
 });
@@ -322,7 +322,7 @@ class AppNotifier extends StateNotifier<AppModel> {
   String _currentBufferAsHtml() => md.markdownToHtml(
         controller.text,
         extensionSet: md.ExtensionSet.gitHubWeb,
-        inlineSyntaxes: [TaskListSyntax()],
+        blockSyntaxes: const [md.UnorderedListWithCheckboxSyntax()],
       );
 
   void _exportMarkdown() {
@@ -562,9 +562,9 @@ class FontSizeNotifier extends StateNotifier<double> {
   }
 
   @override
-  set state(double _state) {
-    pref?.setDouble(persistKey, _state);
-    super.state = _state;
+  set state(double state) {
+    pref?.setDouble(persistKey, state);
+    super.state = state;
   }
 }
 

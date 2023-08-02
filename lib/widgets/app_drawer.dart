@@ -77,13 +77,6 @@ class AppDrawer extends ConsumerWidget {
                 onPressed: ref.read(sourceProvider.notifier).open,
               ),
               PopupMenuButton<Exports>(
-                child: IgnorePointer(
-                  child: OutlinedButton.icon(
-                    icon: const Icon(Icons.import_export),
-                    label: const Text('Export'),
-                    onPressed: _noop,
-                  ),
-                ),
                 onSelected: ref.read(sourceProvider.notifier).export,
                 itemBuilder: (bc) {
                   return [
@@ -92,6 +85,13 @@ class AppDrawer extends ConsumerWidget {
                     const PopupMenuItem(value: Exports.md, child: Text('Markdown')),
                   ];
                 },
+                child: IgnorePointer(
+                  child: OutlinedButton.icon(
+                    icon: const Icon(Icons.import_export),
+                    label: const Text('Export'),
+                    onPressed: _noop,
+                  ),
+                ),
               ),
             ]),
           ),

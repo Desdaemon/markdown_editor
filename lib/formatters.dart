@@ -5,6 +5,7 @@ String? lastCharacter(TextEditingValue val) {
   if (val.selection.isCollapsed && val.selection.start > 1) {
     return val.text[val.selection.start - 1];
   }
+  return null;
 }
 
 class NewlineFormatter extends TextInputFormatter {
@@ -31,7 +32,7 @@ class NewlineFormatter extends TextInputFormatter {
         final prev = lineTrimmed(previousLine, length);
         if (isEmptyHeader(prev)) {
           removedLength = prev.length + 1;
-          before = before.substring(0, before.length - removedLength - 1) + '\n\n';
+          before = '${before.substring(0, before.length - removedLength - 1)}\n\n';
         }
       }
       final value = [
@@ -58,6 +59,7 @@ class NewlineFormatter extends TextInputFormatter {
     if (header != null) {
       return '${header + 1}. ';
     }
+    return null;
   }
 }
 
@@ -75,4 +77,5 @@ String? bulletListHeader(Line previousLine, int indent) {
   if (line.startsWith('- ')) {
     return '- ';
   }
+  return null;
 }

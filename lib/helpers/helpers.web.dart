@@ -4,7 +4,7 @@ import 'dart:html';
 void exportImpl(String file, {bool html = true, String fileName = 'export'}) {
   final type = html ? 'html' : 'text';
   final ext = html ? 'html' : 'md';
-  final text = 'data:text/$type;charset=utf8,' + Uri.encodeComponent(file);
+  final text = 'data:text/$type;charset=utf8,${Uri.encodeComponent(file)}';
   final doc = document.createElement('a')
     ..attributes['download'] = '$fileName.$ext'
     ..attributes['href'] = text;

@@ -41,8 +41,8 @@ class _MemoState extends State<Memo> with AutomaticKeepAliveClientMixin {
 }
 
 const maxDepth = 30;
-bool shouldUpdate(Widget? left, Widget? _right, {int depth = 0}) {
-  final dynamic right = _right;
+bool shouldUpdate(Widget? left, Widget? right_, {int depth = 0}) {
+  final dynamic right = right_;
   if (left == right) return false;
   if (left.runtimeType != right.runtimeType) return true;
   if (left is Text) return left.data != right.data;
@@ -71,8 +71,8 @@ bool shouldUpdate(Widget? left, Widget? _right, {int depth = 0}) {
     GestureDetector,
     DefaultTextStyle,
   }.contains(left.runtimeType)) {
-    final dynamic _left = left;
-    return shouldUpdate(_left.child, right.child, depth: depth + 1);
+    final dynamic left_ = left;
+    return shouldUpdate(left_.child, right.child, depth: depth + 1);
   }
   if (left is Table) {
     if (left.children.length != right.children.length) return true;
@@ -89,23 +89,23 @@ bool shouldUpdate(Widget? left, Widget? _right, {int depth = 0}) {
 }
 
 List<Widget> mergeChildren(Widget left, Widget right) {
-  final List<Widget> _left = (left as dynamic).children;
-  final List<Widget> _right = (right as dynamic).children;
+  final List<Widget> left_ = (left as dynamic).children;
+  final List<Widget> right_ = (right as dynamic).children;
   int leftIdx = 0;
-  final extent = min(_left.length, _right.length);
-  while (leftIdx < extent && shouldUpdate(_left[leftIdx], _right[leftIdx])) {
+  final extent = min(left_.length, right_.length);
+  while (leftIdx < extent && shouldUpdate(left_[leftIdx], right_[leftIdx])) {
     leftIdx++;
   }
-  int i = _left.length;
-  int j = _right.length;
-  while (i > leftIdx && j > leftIdx && shouldUpdate(_left[i - 1], _right[j - 1])) {
+  int i = left_.length;
+  int j = right_.length;
+  while (i > leftIdx && j > leftIdx && shouldUpdate(left_[i - 1], right_[j - 1])) {
     i--;
     j--;
   }
   return [
-    ..._left.sublist(0, leftIdx),
-    ..._right.sublist(leftIdx, j),
-    ..._left.sublist(i),
+    ...left_.sublist(0, leftIdx),
+    ...right_.sublist(leftIdx, j),
+    ...left_.sublist(i),
   ];
 }
 

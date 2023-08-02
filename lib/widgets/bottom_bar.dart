@@ -29,7 +29,7 @@ class BottomBar extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final handler = ref.read(handlerProvider);
     return Material(
-      color: Theme.of(context).bottomAppBarColor,
+      color: Theme.of(context).bottomAppBarTheme.color,
       child: Row(
         children: [
           Expanded(
@@ -42,7 +42,7 @@ class BottomBar extends ConsumerWidget {
                   IconButton(
                     icon: const Icon(Icons.palette),
                     onPressed: () {
-                      ref.read(scribbleProvider.notifier).setColor(Theme.of(context).textTheme.bodyText2!.color!);
+                      ref.read(scribbleProvider.notifier).setColor(Theme.of(context).textTheme.bodyMedium!.color!);
                       Navigator.push(context, MaterialPageRoute(builder: (_) => const DrawScreen()));
                     },
                     tooltip: 'Insert drawing',

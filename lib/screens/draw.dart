@@ -40,7 +40,7 @@ class DrawScreen extends StatelessWidget {
             onPressed: () {
               ref.read(scribbleProvider.notifier)
                 ..clear()
-                ..setColor(Theme.of(bc).textTheme.bodyText2!.color!);
+                ..setColor(Theme.of(bc).textTheme.bodyMedium!.color!);
             },
             child: const Icon(Icons.cancel),
           );
